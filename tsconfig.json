@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "target": "ES2017",
+    "outDir": "./dist",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["./src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

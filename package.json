@@ -1,0 +1,24 @@
+{
+  "name": "observer-x",
+  "version": "0.0.0",
+  "description": "Your AI mate.",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsc -w",
+    "start": "node ./dist/index.js",
+    "build": "tsc",
+    "lint": "eslint . --fix"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.4",
+    "eslint": "^7.32.0 || ^8.2.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-plugin-import": "^2.25.2",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-config-prettier": "^8.5.0",
+    "prettier": "^2.7.1"
+  }
+}
