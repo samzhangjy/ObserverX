@@ -23,6 +23,7 @@
     "no-restricted-exports": [
       "off"
     ],
-    "no-console": "off"
+    "no-console": "off",
+    "no-restricted-syntax": "off"
   }
 }

@@ -1,12 +1,18 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,
     "module": "ESNext",
     "sourceMap": true,
     "moduleResolution": "node",
     "target": "ES2017",
     "outDir": "./dist",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["./src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

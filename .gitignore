@@ -3,3 +3,7 @@ node_modules
 **/.DS_Store
 dist
 .idea
+*.env
+cache
+scws-1.2.1
+zhparser

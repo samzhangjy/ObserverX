@@ -1,1 +1,18 @@
-console.log('Hello TypeScript world!');
+import * as readline from 'readline';
+import Bot from './connector.js';
+
+const bot = new Bot('default', 'GPT-3.5');
+
+const reader = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+const ask = async (userInput: string) => {
+  if (!userInput) return;
+  const answer = await bot.chat(userInput);
+  console.log(answer);
+  reader.question('You: ', ask);
+};
+
+reader.question('You: ', ask);
