@@ -1,7 +1,7 @@
 import * as readline from 'readline';
 import Bot from './connector.js';
 
-const bot = new Bot('default', 'GPT-3.5');
+const bot = new Bot('default', 'GPT-4');
 
 const reader = readline.createInterface({
   input: process.stdin,
@@ -10,8 +10,9 @@ const reader = readline.createInterface({
 
 const ask = async (userInput: string) => {
   if (!userInput) return;
-  const answer = await bot.chat(userInput);
-  console.log(answer);
+  for await (const segment of await bot.chat(userInput)) {
+    console.log(segment);
+  }
   reader.question('You: ', ask);
 };
 

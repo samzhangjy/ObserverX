@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import path from 'path';
@@ -8,13 +9,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const dataSource = new DataSource({
   type: 'postgres',
-  host: 'localhost',
-  port: 5432,
-  username: 'postgres',
-  password: 'sam951796',
-  database: 'observerx',
+  host: process.env.DATABASE_HOST,
+  port: parseInt(process.env.DATABASE_PORT, 10),
+  username: process.env.DATABASE_USERNAME,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
   synchronize: true,
-  logging: true,
+  logging: false,
   entities: [path.join(__dirname, './entity/*.{js,ts}')],
   subscribers: [],
   migrations: [],
