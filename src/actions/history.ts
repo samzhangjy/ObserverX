@@ -119,6 +119,15 @@ export async function searchChatHistory({
   };
 }
 
+export interface GetMessageParameters {
+  id: number;
+}
+
+export async function getMessage({ id: messageId }: GetMessageParameters) {
+  const repository = dataSource.getRepository(Message);
+  return repository.findOneBy({ id: messageId });
+}
+
 export const searchChatHistoryAction = new Action(
   {
     name: 'search_chat_history',
@@ -158,4 +167,20 @@ export const searchChatHistoryAction = new Action(
   searchChatHistory,
 );
 
-export default searchChatHistoryAction;
+export const getMessageAction = new Action(
+  {
+    name: 'get_message',
+    description: 'Fetches a single chat message entry by its ID. Returns null if not found.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'number',
+          description: 'ID of the chat history entry.',
+        },
+      },
+      required: ['id'],
+    },
+  },
+  getMessage,
+);

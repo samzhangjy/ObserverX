@@ -1,8 +1,14 @@
 import 'dotenv/config';
-import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from 'openai';
+import {
+  ChatCompletionRequestMessage,
+  Configuration,
+  CreateChatCompletionResponse,
+  OpenAIApi,
+} from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DeepPartial, Repository } from 'typeorm';
+import { AxiosResponse } from 'axios';
 import RuntimeHistory from './runtime-history.js';
 import { actionMap, actions } from './actions/index.js';
 import Message, { MessageRole } from './entity/Message.js';
@@ -75,6 +81,17 @@ class Bot {
 
   private readonly messageRepository: Repository<Message> = dataSource.getRepository(Message);
 
+  private readonly HISTORY_COUNT_LIMIT: number = parseInt(
+    process.env.HISTORY_COUNT_LIMIT ?? '50',
+    10,
+  );
+
+  private readonly MAX_FUNCTION_RESULT_LENGTH = 300;
+
+  private readonly REQUEST_RETRY_INTERVAL = 200;
+
+  private readonly MAX_REQUEST_RETRIES = 10;
+
   /**
    * Create a new bot.
    * @param prompt Bot prompt to use.
@@ -87,12 +104,32 @@ class Bot {
       basePath: process.env.OPENAI_BASE_PATH ?? 'https://api.openai.com/v1',
     });
     this.openai = new OpenAIApi(this.configuration);
+
     // give bot an overview of the user at the beginning
     actionMap.get_user_info.invoke().then((data) => {
       this.history.push(
         new RuntimeHistory('function', data, new Date(), undefined, 'get_user_info'),
       );
     });
+
+    // load initial history
+    this.messageRepository
+      .find({
+        take: this.HISTORY_COUNT_LIMIT,
+        order: { timestamp: 'ASC' },
+      })
+      .then((history) => {
+        history.forEach((message) => {
+          const newMsg = message;
+          if (
+            message.role === MessageRole.FUNCTION &&
+            message.content.length > this.MAX_FUNCTION_RESULT_LENGTH
+          ) {
+            newMsg.content = `<result too long, use \`get_message({ id: ${message.id} })\` to view>`;
+          }
+          this.history.push(RuntimeHistory.fromMessage(newMsg));
+        });
+      });
   }
 
   /**
@@ -117,6 +154,11 @@ class Bot {
     const messageRecord = this.messageRepository.create(message);
     await this.messageRepository.save(messageRecord);
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
+
+    // remove older history to prevent exceeding token limit
+    if (this.history.length > this.HISTORY_COUNT_LIMIT) {
+      this.history.shift();
+    }
   }
 
   /**
@@ -225,14 +267,38 @@ class Bot {
   /**
    * Get the next message from OpenAI.
    * @param messages Message history in OpenAI required format.
+   * @param retries Number of retries.
    * @private
    */
-  private async getNextMessage(messages: ChatCompletionRequestMessage[]) {
-    return this.openai.createChatCompletion({
-      model: modelMap[this.model],
-      messages,
-      functions: actions,
-    });
+  private async getNextMessage(messages: ChatCompletionRequestMessage[], retries = 0) {
+    type GetMessageResponse = AxiosResponse<CreateChatCompletionResponse, any>;
+    let response: GetMessageResponse | null = null;
+
+    if (retries > this.MAX_REQUEST_RETRIES) {
+      throw new Error('Max retries exceeded.');
+    }
+
+    try {
+      response = await this.openai.createChatCompletion({
+        model: modelMap[this.model],
+        messages,
+        functions: actions,
+      });
+    } catch (e) {
+      const data = e.response.data.error;
+      if (data.code === 'context_length_exceeded') {
+        this.history.shift();
+        const messagePromise: Promise<GetMessageResponse> = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(this.getNextMessage(messages.slice(1), retries + 1));
+          }, this.REQUEST_RETRY_INTERVAL);
+        });
+        return await messagePromise;
+      }
+      throw e;
+    }
+
+    return response;
   }
 }
 

@@ -1,7 +1,7 @@
 import runNodeCodeAction from './node.js';
 import Action from './action.js';
 import { getUserInfoAction, updateUserInfoAction } from './user-info.js';
-import searchChatHistoryAction from './history.js';
+import { searchChatHistoryAction, getMessageAction } from './history.js';
 import getCurrentTimeAction from './time.js';
 
 const actionInstances = [
@@ -9,6 +9,7 @@ const actionInstances = [
   updateUserInfoAction,
   getUserInfoAction,
   searchChatHistoryAction,
+  getMessageAction,
   getCurrentTimeAction,
 ];
 
