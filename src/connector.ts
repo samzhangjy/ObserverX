@@ -1,27 +1,23 @@
 import 'dotenv/config';
-import {
-  ChatCompletionRequestMessage,
-  Configuration,
-  CreateChatCompletionResponse,
-  OpenAIApi,
-} from 'openai';
+import OpenAI from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DeepPartial, Repository } from 'typeorm';
-import { AxiosResponse } from 'axios';
+import { Chat, CompletionCreateParams } from 'openai/resources/chat';
+import { encode } from 'gpt-tokenizer';
 import RuntimeHistory from './runtime-history.js';
 import { actionMap, actions } from './actions/index.js';
 import Message, { MessageRole } from './entity/Message.js';
 import dataSource from './data-source.js';
+import { BotModel, modelMap } from './config.js';
+import { ActionConfig } from './actions/action.js';
+import { getTokenCountFromMessage, limitTokensFromMessages } from './common/token-limiter.js';
+import { transformMessageToOpenAIFormat } from './common/transform.js';
+import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
+import ChatCompletionChunk = Chat.ChatCompletionChunk;
+import ChatCompletion = Chat.ChatCompletion;
 
 export type BotPrompt = 'default';
-
-export type BotModel = 'GPT-3.5' | 'GPT-4';
-
-const modelMap: Record<BotModel, string> = {
-  'GPT-3.5': 'gpt-3.5-turbo',
-  'GPT-4': 'gpt-4',
-};
 
 /**
  * Chat result for each turn.
@@ -33,7 +29,9 @@ export interface ChatResult {
   type:
     | 'action'
     | 'action-result'
-    | 'message'
+    | 'message-start'
+    | 'message-part'
+    | 'message-end'
     | 'update-info'
     | 'update-info-result'
     | 'update-info-action';
@@ -69,9 +67,7 @@ class Bot {
 
   private currentPrompt: string | null = null;
 
-  private readonly configuration: Configuration;
-
-  private readonly openai: OpenAIApi;
+  private readonly openai: OpenAI;
 
   private userTurns: number = 0;
 
@@ -86,30 +82,34 @@ class Bot {
     10,
   );
 
-  private readonly MAX_FUNCTION_RESULT_LENGTH = 300;
-
-  private readonly REQUEST_RETRY_INTERVAL = 200;
-
-  private readonly MAX_REQUEST_RETRIES = 10;
-
   /**
    * Create a new bot.
    * @param prompt Bot prompt to use.
    * @param model Bot model to use.
    */
-  constructor(private prompt: BotPrompt = 'default', private model: BotModel = 'GPT-3.5') {
+  constructor(
+    private prompt: BotPrompt = 'default',
+    private model: BotModel = 'GPT-3.5',
+  ) {
     this.loadPrompt();
-    this.configuration = new Configuration({
+    this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      basePath: process.env.OPENAI_BASE_PATH ?? 'https://api.openai.com/v1',
+      baseURL: process.env.OPENAI_BASE_PATH ?? 'https://api.openai.com/v1',
     });
-    this.openai = new OpenAIApi(this.configuration);
 
     // give bot an overview of the user at the beginning
-    actionMap.get_user_info.invoke().then((data) => {
-      this.history.push(
-        new RuntimeHistory('function', data, new Date(), undefined, 'get_user_info'),
-      );
+    actionMap.get_user_info.invoke({}, this.actionConfig).then((data) => {
+      const message: Message = {
+        id: 0,
+        role: MessageRole.FUNCTION,
+        content: data,
+        timestamp: new Date(),
+        actionName: 'get_user_info',
+        tokens: 0,
+      };
+      message.tokens = encode(JSON.stringify(transformMessageToOpenAIFormat(message))).length;
+
+      this.history.push(RuntimeHistory.fromMessage(message));
     });
 
     // load initial history
@@ -119,15 +119,8 @@ class Bot {
         order: { timestamp: 'ASC' },
       })
       .then((history) => {
-        history.forEach((message) => {
-          const newMsg = message;
-          if (
-            message.role === MessageRole.FUNCTION &&
-            message.content.length > this.MAX_FUNCTION_RESULT_LENGTH
-          ) {
-            newMsg.content = `<result too long, use \`get_message({ id: ${message.id} })\` to view>`;
-          }
-          this.history.push(RuntimeHistory.fromMessage(newMsg));
+        limitTokensFromMessages(history, modelMap[this.model].tokenLimit / 2).forEach((message) => {
+          this.history.push(RuntimeHistory.fromMessage(message));
         });
       });
   }
@@ -150,8 +143,11 @@ class Bot {
    * @param message Message object to create.
    * @private
    */
-  private async createMessage(message: DeepPartial<Message>) {
-    const messageRecord = this.messageRepository.create(message);
+  private async createMessage(message: DeepPartial<Omit<Message, 'tokens'>>) {
+    const messageRecord = this.messageRepository.create({
+      tokens: encode(JSON.stringify(transformMessageToOpenAIFormat(message))).length,
+      ...message,
+    });
     await this.messageRepository.save(messageRecord);
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
 
@@ -189,18 +185,71 @@ class Bot {
       });
     }
 
-    const reply = (await this.getNextMessage(this.getChatCompletionRequest())).data.choices[0];
-    const replyContent = reply.message.content;
+    const reply: ChatCompletionChunk.Choice.Delta = {
+      content: null,
+      function_call: null,
+      role: null,
+    };
+
+    let finishReason: ChatCompletion.Choice['finish_reason'] = null;
+
+    const stream = await this.getNextMessage(this.getChatCompletionRequest());
+    let isFirstContentPart = true;
+    for await (const part of stream) {
+      const { delta } = part;
+      Object.entries(delta).forEach(([key, value]) => {
+        if (reply[key] === null) {
+          reply[key] =
+            key === 'function_call'
+              ? {
+                  name: '',
+                  arguments: '',
+                }
+              : '';
+        }
+        if (key !== 'function_call') {
+          reply[key] += value ?? '';
+        }
+      });
+
+      if (part.finish_reason) {
+        finishReason = part.finish_reason;
+        if (part.finish_reason !== 'function_call') {
+          yield { type: 'message-end' };
+        }
+        break;
+      }
+
+      if (delta.function_call) {
+        reply.function_call.name += delta.function_call.name ?? '';
+        reply.function_call.arguments += delta.function_call.arguments ?? '';
+      }
+
+      if (delta.content) {
+        if (isFirstContentPart) {
+          yield {
+            type: 'message-start',
+          };
+          isFirstContentPart = false;
+        }
+        yield {
+          type: 'message-part',
+          content: delta.content,
+        };
+      }
+    }
+
+    const replyContent = reply.content;
     await this.createMessage({
       role: MessageRole.ASSISTANT,
       content: replyContent,
-      action: reply.message.function_call,
+      action: reply.function_call,
     });
 
     // function call handling
-    if (reply.message.function_call) {
-      const actionName = reply.message.function_call.name;
-      const actionArgs = JSON.parse(reply.message.function_call.arguments);
+    if (finishReason === 'function_call') {
+      const actionName = reply.function_call.name;
+      const actionArgs = JSON.parse(reply.function_call.arguments);
       const action = actionMap[actionName];
 
       yield {
@@ -210,7 +259,7 @@ class Bot {
       };
 
       // IMPORTANT: `actionResponse` MUST NOT be falsy or OpenAI will throw a remote error
-      const actionResponse = (await action.invoke(actionArgs)) ?? 'success';
+      const actionResponse = (await action.invoke(actionArgs, this.actionConfig)) ?? 'success';
       await this.createMessage({
         role: MessageRole.FUNCTION,
         content: actionResponse,
@@ -229,10 +278,7 @@ class Bot {
       return yield* this.chatInner(null);
     }
 
-    return (yield {
-      type: 'message',
-      content: replyContent,
-    }) as void;
+    return undefined;
   }
 
   /**
@@ -249,56 +295,88 @@ class Bot {
    * Builds chat history in OpenAI required format.
    * @private
    */
-  private getChatCompletionRequest(): ChatCompletionRequestMessage[] {
-    return [
-      { role: 'system', content: this.currentPrompt },
-      { role: 'system', content: `It is now ${new Date().toString()}.` },
+  private getChatCompletionRequest(): CreateChatCompletionRequestStreaming.Message[] {
+    const systemPrompt = {
+      role: MessageRole.SYSTEM,
+      content: this.currentPrompt,
+      id: 0,
+    };
+
+    const timePrompt = {
+      role: MessageRole.SYSTEM,
+      content: `It is now ${new Date().toString()}.`,
+      id: 0,
+    };
+
+    const messages: ({
+      id: number;
+      tokens: number;
+    } & CreateChatCompletionRequestStreaming.Message)[] = [
+      {
+        ...systemPrompt,
+        tokens: getTokenCountFromMessage(systemPrompt),
+      },
+      { ...timePrompt, tokens: getTokenCountFromMessage(timePrompt) },
       ...this.history.map((history) => {
         return {
           role: history.role,
           content: history.role === 'function' ? JSON.stringify(history.content) : history.content,
           function_call: history.action,
           name: history.actionName,
+          id: history.id,
+          tokens: history.tokens,
         };
       }),
     ];
+
+    const getTotalTokens = () => {
+      return messages.reduce((prev, curr) => prev + curr.tokens, 0);
+    };
+
+    while (getTotalTokens() >= modelMap[this.model].tokenLimit) {
+      let longestMessageIdx = -1;
+      let longestMessageLength = 0;
+      messages.forEach((message, idx) => {
+        const currentLength = message.tokens;
+        if (currentLength > longestMessageLength) {
+          longestMessageIdx = idx;
+          longestMessageLength = currentLength;
+        }
+      });
+      messages[
+        longestMessageIdx
+      ].content = `<message too long, use \`get_message(${messages[longestMessageIdx].id})\` to view>`;
+      messages[longestMessageIdx].tokens = getTokenCountFromMessage(
+        messages[longestMessageIdx] as Message,
+      );
+    }
+    return messages;
   }
 
   /**
    * Get the next message from OpenAI.
    * @param messages Message history in OpenAI required format.
-   * @param retries Number of retries.
    * @private
    */
-  private async getNextMessage(messages: ChatCompletionRequestMessage[], retries = 0) {
-    type GetMessageResponse = AxiosResponse<CreateChatCompletionResponse, any>;
-    let response: GetMessageResponse | null = null;
+  private async *getNextMessage(
+    messages: CreateChatCompletionRequestStreaming.Message[],
+  ): AsyncGenerator<ChatCompletionChunk.Choice, any> {
+    const stream = await this.openai.chat.completions.create({
+      model: modelMap[this.model].name,
+      messages,
+      functions: actions,
+      stream: true,
+    });
 
-    if (retries > this.MAX_REQUEST_RETRIES) {
-      throw new Error('Max retries exceeded.');
+    for await (const part of stream) {
+      yield part.choices[0];
     }
+  }
 
-    try {
-      response = await this.openai.createChatCompletion({
-        model: modelMap[this.model],
-        messages,
-        functions: actions,
-      });
-    } catch (e) {
-      const data = e.response.data.error;
-      if (data.code === 'context_length_exceeded') {
-        this.history.shift();
-        const messagePromise: Promise<GetMessageResponse> = new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(this.getNextMessage(messages.slice(1), retries + 1));
-          }, this.REQUEST_RETRY_INTERVAL);
-        });
-        return await messagePromise;
-      }
-      throw e;
-    }
-
-    return response;
+  private get actionConfig(): ActionConfig {
+    return {
+      model: this.model,
+    };
   }
 }
 

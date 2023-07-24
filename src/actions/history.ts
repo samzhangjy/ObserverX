@@ -1,9 +1,12 @@
 import 'dotenv/config';
+import { instanceToPlain } from 'class-transformer';
 import dataSource from '../data-source.js';
 import Message from '../entity/Message.js';
-import Action from './action.js';
+import Action, { ActionConfig, ActionParameters } from './action.js';
+import { modelMap } from '../config.js';
+import { limitTokensFromMessages } from '../common/token-limiter.js';
 
-export interface SearchChatHistoryParameters {
+export interface SearchChatHistoryParameters extends ActionParameters {
   keyword?: string;
   date?: string;
   time_range?: string;
@@ -17,14 +20,18 @@ export interface SearchChatHistoryParameters {
  * @param params Parameters used in the SQL.
  */
 function getQueryWithParams(sql: string, params: any[]) {
-  const dateFormat = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
+  const dateFormat = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const dateFormatWithTime = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
   let result = sql;
 
   params.forEach((value, i) => {
     const index = `$${i + 1}`;
     if (typeof value === 'string') {
       // check if it is a date
-      result = result.replace(index, dateFormat.test(value) ? `'${value}'` : `"${value}"`);
+      result = result.replace(
+        index,
+        dateFormat.test(value) || dateFormatWithTime.test(value) ? `'${value}'` : `"${value}"`,
+      );
     }
 
     if (typeof value === 'object') {
@@ -48,12 +55,10 @@ function getQueryWithParams(sql: string, params: any[]) {
   return result;
 }
 
-export async function searchChatHistory({
-  keyword,
-  date,
-  time_range,
-  page = 1,
-}: SearchChatHistoryParameters) {
+export async function searchChatHistory(
+  { keyword, date, time_range, page = 1 }: SearchChatHistoryParameters,
+  config: ActionConfig,
+) {
   let timeRangeBegin = null;
   let timeRangeEnd = null;
   const perPage = parseInt(process.env.HISTORY_PER_PAGE ?? '10', 10);
@@ -92,12 +97,15 @@ export async function searchChatHistory({
   const [sqlWithoutParams, params] = searchQuery.getQueryAndParameters();
   const rawSql = getQueryWithParams(sqlWithoutParams, params);
 
-  const messages = await searchQuery
-    .orderBy('message.timestamp', 'DESC')
-    .groupBy('message.id')
-    .take(perPage)
-    .skip((page - 1) * perPage)
-    .getMany();
+  const messages = limitTokensFromMessages(
+    await searchQuery
+      .orderBy('message.timestamp', 'DESC')
+      .groupBy('message.id')
+      .take(perPage)
+      .skip((page - 1) * perPage)
+      .getMany(),
+    modelMap[config.model].tokenLimit / 3,
+  );
 
   // TypeORM builtin support for COUNT(DISTINCT ...) is very buggy and includes duplicates
   // so we have to use raw SQL here
@@ -112,10 +120,9 @@ export async function searchChatHistory({
   );
 
   return {
-    messages,
+    messages: messages.map((message) => instanceToPlain(message)),
     total,
     current_page: page,
-    total_pages: Math.ceil(total / perPage),
   };
 }
 

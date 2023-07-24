@@ -1,5 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { ChatCompletionRequestMessageFunctionCall } from 'openai';
+import { CompletionCreateParams } from 'openai/resources/chat';
+// eslint-disable-next-line @typescript-eslint/no-use-before-define
+import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
 
 export enum MessageRole {
   SYSTEM = 'system',
@@ -23,10 +25,13 @@ class Message {
   public content?: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  public action?: ChatCompletionRequestMessageFunctionCall;
+  public action?: FunctionCall;
 
   @Column({ nullable: true })
   public actionName?: string;
+
+  @Column()
+  public tokens: number;
 }
 
 export default Message;
