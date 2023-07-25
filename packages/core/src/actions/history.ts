@@ -107,7 +107,7 @@ export async function searchChatHistory(
     modelMap[config.model].tokenLimit / 3,
   );
 
-  // TypeORM builtin support for COUNT(DISTINCT ...) is very buggy and includes duplicates
+  // TypeORM builtin support for COUNT(DISTINCT ...) is very buggy and includes duplicates,
   // so we have to use raw SQL here
   // NOTE: try to workaround it by using QueryBuilder
   const total = parseInt(

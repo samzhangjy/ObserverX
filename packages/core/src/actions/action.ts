@@ -1,6 +1,6 @@
 import { CompletionCreateParams } from 'openai/resources/chat';
 import Function = CompletionCreateParams.CreateChatCompletionRequestNonStreaming.Function;
-import { BotModel } from '../config';
+import { BotModel } from '../config.js';
 
 export interface ActionConfig {
   model: BotModel;

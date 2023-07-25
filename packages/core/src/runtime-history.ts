@@ -1,5 +1,5 @@
 import { ChatCompletion, CompletionCreateParams } from 'openai/resources/chat';
-import Message from './entity/Message';
+import Message from './entity/Message.js';
 import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
 
 class RuntimeHistory {

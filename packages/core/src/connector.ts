@@ -5,6 +5,7 @@ import * as path from 'path';
 import { DeepPartial, Repository } from 'typeorm';
 import { Chat, CompletionCreateParams } from 'openai/resources/chat';
 import { encode } from 'gpt-tokenizer';
+import { fileURLToPath } from 'url';
 import RuntimeHistory from './runtime-history.js';
 import { actionMap, actions } from './actions/index.js';
 import Message, { MessageRole } from './entity/Message.js';
@@ -59,10 +60,12 @@ export interface ChatResult {
 
 type ChatInner = AsyncGenerator<ChatResult, void | null | ChatInner>;
 
+export type IChat = ChatInner | string;
+
 /**
  * ObserverX core.
  */
-class Bot {
+class ObserverX {
   private history: RuntimeHistory[] = [];
 
   private currentPrompt: string | null = null;
@@ -89,7 +92,7 @@ class Bot {
    */
   constructor(
     private prompt: BotPrompt = 'default',
-    private model: BotModel = 'GPT-3.5',
+    public model: BotModel = 'GPT-3.5',
   ) {
     this.loadPrompt();
     this.openai = new OpenAI({
@@ -129,7 +132,7 @@ class Bot {
    * Chat with the bot.
    * @param message The message to send to the bot.
    */
-  public async chat(message: string): Promise<ChatInner | string> {
+  public async chat(message: string): Promise<IChat> {
     this.userTurns += 1;
     try {
       return this.chatInner(message);
@@ -286,7 +289,10 @@ class Bot {
    * @private
    */
   private loadPrompt() {
-    const promptPath = path.resolve(`./prompts/${this.prompt}.md`);
+    const promptPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      `../prompts/${this.prompt}.md`,
+    );
     if (!fs.existsSync(promptPath)) return;
     this.currentPrompt = fs.readFileSync(promptPath, { encoding: 'utf-8' });
   }
@@ -380,4 +386,4 @@ class Bot {
   }
 }
 
-export default Bot;
+export default ObserverX;

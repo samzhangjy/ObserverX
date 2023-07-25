@@ -1,6 +1,6 @@
 import { CompletionCreateParams } from 'openai/resources/chat';
 import { DeepPartial } from 'typeorm';
-import Message from '../entity/Message';
+import Message from '../entity/Message.js';
 import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
 
 // eslint-disable-next-line import/prefer-default-export
