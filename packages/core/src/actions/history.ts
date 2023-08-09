@@ -30,7 +30,8 @@ function getQueryWithParams(sql: string, params: any[]) {
       // check if it is a date
       result = result.replace(
         index,
-        dateFormat.test(value) || dateFormatWithTime.test(value) ? `'${value}'` : `"${value}"`,
+        // dateFormat.test(value) || dateFormatWithTime.test(value) ? `'${value}'` : `"${value}"`,
+        `'${value}'`,
       );
     }
 
@@ -92,7 +93,8 @@ export async function searchChatHistory(
         ? `date_trunc('day', message.timestamp) = :date`
         : `message.timestamp BETWEEN :begin AND :end`,
       { date, begin: timeRangeBegin, end: timeRangeEnd },
-    );
+    )
+    .andWhere('message.parentId = :parentId', { parentId: config.parentId });
 
   const [sqlWithoutParams, params] = searchQuery.getQueryAndParameters();
   const rawSql = getQueryWithParams(sqlWithoutParams, params);

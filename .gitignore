@@ -8,3 +8,10 @@
 **/cache
 scws-1.2.1
 zhparser
+
+packages/qq/data
+packages/qq/logs
+packages/qq/go-cqhttp
+packages/qq/config.yml
+packages/qq/device.json
+packages/qq/session.token

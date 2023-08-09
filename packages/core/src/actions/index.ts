@@ -3,6 +3,7 @@ import Action from './action.js';
 import { getUserInfoAction, updateUserInfoAction } from './user-info.js';
 import { searchChatHistoryAction, getMessageAction } from './history.js';
 import getCurrentTimeAction from './time.js';
+import { changeBotModelAction, getBotModelAction } from './bot-info.js';
 
 const actionInstances = [
   runNodeCodeAction,
@@ -11,6 +12,8 @@ const actionInstances = [
   searchChatHistoryAction,
   getMessageAction,
   getCurrentTimeAction,
+  getBotModelAction,
+  changeBotModelAction,
 ];
 
 export const actions = actionInstances.map((action) => action.doc);

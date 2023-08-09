@@ -1,6 +1,7 @@
 import { ChatCompletion, CompletionCreateParams } from 'openai/resources/chat';
 import Message from './entity/Message.js';
 import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
+import User from './entity/User';
 
 class RuntimeHistory {
   constructor(
@@ -11,6 +12,8 @@ class RuntimeHistory {
     public action?: FunctionCall,
     public actionName?: string,
     public tokens?: number,
+    public sender?: User,
+    public parentId?: string,
   ) {}
 
   static fromMessage(message: Message) {
@@ -22,6 +25,8 @@ class RuntimeHistory {
       message.action,
       message.actionName,
       message.tokens,
+      message.sender,
+      message.parentId,
     );
   }
 }

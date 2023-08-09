@@ -20,7 +20,10 @@ export function chat(...params: ConstructorParameters<typeof ObserverX>) {
   const ask = async (userInput: string) => {
     if (!userInput) return;
 
-    const stream = await bot.chat(userInput);
+    const stream = await bot.chat({
+      message: userInput,
+      senderId: '1',
+    });
 
     // TODO: remove the `c` character from console input (stdin stream)
     const cancelListener = async (ch, key) => {

@@ -14,11 +14,12 @@ import { BotModel, modelMap } from './config.js';
 import { ActionConfig } from './actions/action.js';
 import { getTokenCountFromMessage, limitTokensFromMessages } from './common/token-limiter.js';
 import { transformMessageToOpenAIFormat } from './common/transform.js';
+import User from './entity/User.js';
 import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
 import ChatCompletionChunk = Chat.ChatCompletionChunk;
 import ChatCompletion = Chat.ChatCompletion;
 
-export type BotPrompt = 'default';
+export type BotPrompt = 'default' | 'private' | 'group';
 
 /**
  * Chat result for each turn.
@@ -62,6 +63,11 @@ type ChatInner = AsyncGenerator<ChatResult, void | null | ChatInner>;
 
 export type IChat = ChatInner | string;
 
+export interface ChatInput {
+  senderId: string;
+  message: string;
+}
+
 /**
  * ObserverX core.
  */
@@ -80,6 +86,8 @@ class ObserverX {
 
   private readonly messageRepository: Repository<Message> = dataSource.getRepository(Message);
 
+  private readonly userRepository: Repository<User> = dataSource.getRepository(User);
+
   private readonly HISTORY_COUNT_LIMIT: number = parseInt(
     process.env.HISTORY_COUNT_LIMIT ?? '50',
     10,
@@ -89,10 +97,12 @@ class ObserverX {
    * Create a new bot.
    * @param prompt Bot prompt to use.
    * @param model Bot model to use.
+   * @param parentId Conversation parent ID.
    */
   constructor(
     private prompt: BotPrompt = 'default',
     public model: BotModel = 'GPT-3.5',
+    public parentId: string = 'UNKNOWN',
   ) {
     this.loadPrompt();
     this.openai = new OpenAI({
@@ -100,24 +110,12 @@ class ObserverX {
       baseURL: process.env.OPENAI_BASE_PATH ?? 'https://api.openai.com/v1',
     });
 
-    // give bot an overview of the user at the beginning
-    actionMap.get_user_info.invoke({}, this.actionConfig).then((data) => {
-      const message: Message = {
-        id: 0,
-        role: MessageRole.FUNCTION,
-        content: data,
-        timestamp: new Date(),
-        actionName: 'get_user_info',
-        tokens: 0,
-      };
-      message.tokens = encode(JSON.stringify(transformMessageToOpenAIFormat(message))).length;
-
-      this.history.push(RuntimeHistory.fromMessage(message));
-    });
-
     // load initial history
     this.messageRepository
       .find({
+        where: {
+          parentId,
+        },
         take: this.HISTORY_COUNT_LIMIT,
         order: { timestamp: 'ASC' },
       })
@@ -130,12 +128,12 @@ class ObserverX {
 
   /**
    * Chat with the bot.
-   * @param message The message to send to the bot.
+   * @param payload The message to send to the bot.
    */
-  public async chat(message: string): Promise<IChat> {
+  public async chat(payload: ChatInput): Promise<IChat> {
     this.userTurns += 1;
     try {
-      return this.chatInner(message);
+      return this.chatInner(payload);
     } catch (e) {
       return `[ObserverX] An unexpected error occurred: ${e.toString()}.`;
     }
@@ -147,9 +145,18 @@ class ObserverX {
    * @private
    */
   private async createMessage(message: DeepPartial<Omit<Message, 'tokens'>>) {
+    let sender = await this.userRepository.findOneBy({ id: message.sender?.id ?? '' });
+    if (message.sender?.id && !sender) {
+      sender = this.userRepository.create({
+        id: message.sender.id,
+      });
+      await this.userRepository.save(sender);
+    }
     const messageRecord = this.messageRepository.create({
       tokens: encode(JSON.stringify(transformMessageToOpenAIFormat(message))).length,
       ...message,
+      sender,
+      parentId: this.parentId,
     });
     await this.messageRepository.save(messageRecord);
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
@@ -160,12 +167,23 @@ class ObserverX {
     }
   }
 
+  public async addMessageToQueue(payload: ChatInput) {
+    await this.createMessage({
+      role: MessageRole.USER,
+      content: payload.message,
+      parentId: this.parentId,
+      sender: {
+        id: payload.senderId,
+      },
+    });
+  }
+
   /**
    * Inner chat logic.
-   * @param message The message to send to the bot.
+   * @param payload The message to send to the bot.
    * @private
    */
-  private async *chatInner(message: string | null): ChatInner {
+  private async *chatInner(payload: ChatInput | null): ChatInner {
     // remind bot to update user information
     if (this.userTurns >= this.INFO_UPDATE_DELTA) {
       yield {
@@ -181,10 +199,14 @@ class ObserverX {
       return yield* this.chatInner(null);
     }
 
-    if (message !== null) {
+    if (payload !== null) {
       await this.createMessage({
         role: MessageRole.USER,
-        content: message,
+        content: payload.message,
+        parentId: this.parentId,
+        sender: {
+          id: payload.senderId,
+        },
       });
     }
 
@@ -249,6 +271,21 @@ class ObserverX {
       action: reply.function_call,
     });
 
+    let isJSON = true;
+
+    try {
+      JSON.parse(replyContent);
+    } catch {
+      isJSON = false;
+    }
+
+    if (isJSON) {
+      await this.createMessage({
+        role: MessageRole.SYSTEM,
+        content: 'Please stop replying in JSON format. Use plain text instead.',
+      });
+    }
+
     // function call handling
     if (finishReason === 'function_call') {
       const actionName = reply.function_call.name;
@@ -262,7 +299,9 @@ class ObserverX {
       };
 
       // IMPORTANT: `actionResponse` MUST NOT be falsy or OpenAI will throw a remote error
-      const actionResponse = (await action.invoke(actionArgs, this.actionConfig)) ?? 'success';
+      const actionResponse =
+        (await action.invoke(actionArgs, this.actionConfig, this.changeBotConfig.bind(this))) ??
+        'success';
       await this.createMessage({
         role: MessageRole.FUNCTION,
         content: actionResponse,
@@ -326,7 +365,16 @@ class ObserverX {
       ...this.history.map((history) => {
         return {
           role: history.role,
-          content: history.role === 'function' ? JSON.stringify(history.content) : history.content,
+          content:
+            // eslint-disable-next-line no-nested-ternary
+            history.role === 'function'
+              ? JSON.stringify(history.content)
+              : history.role === 'user'
+              ? JSON.stringify({
+                  sender: history.sender,
+                  content: history.content,
+                })
+              : history.content,
           function_call: history.action,
           name: history.actionName,
           id: history.id,
@@ -356,6 +404,7 @@ class ObserverX {
         messages[longestMessageIdx] as Message,
       );
     }
+
     return messages;
   }
 
@@ -375,14 +424,24 @@ class ObserverX {
     });
 
     for await (const part of stream) {
-      yield part.choices[0];
+      try {
+        yield part.choices[0];
+      } catch {
+        // ignore
+      }
     }
   }
 
   private get actionConfig(): ActionConfig {
     return {
       model: this.model,
+      parentId: this.parentId,
     };
+  }
+
+  public changeBotConfig(config: ActionConfig) {
+    this.model = config.model ?? this.model;
+    this.parentId = config.parentId ?? this.parentId;
   }
 }
 

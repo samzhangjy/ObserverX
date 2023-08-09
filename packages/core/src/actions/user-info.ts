@@ -1,21 +1,29 @@
+import 'dotenv/config';
 import dataSource from '../data-source.js';
 import User from '../entity/User.js';
-import Action, { ActionBaseStatus } from './action.js';
+import Action, { ActionBaseStatus, ActionParameters } from './action.js';
 
-export interface UserInfo {
-  name: string;
-  personality: string;
-  hobbies: string;
+export interface UpdateUserInfoParameters extends ActionParameters {
+  user_id: string;
+  name?: string;
+  personality?: string;
+  hobbies?: string;
 }
 
-export async function updateUserInfo(userInfo: Partial<UserInfo>) {
+export async function updateUserInfo(userInfo: Partial<UpdateUserInfoParameters>) {
   try {
     const userRepository = dataSource.getRepository(User);
-    let user = await userRepository.findOneBy({ id: 1 });
+    let user = await userRepository.findOneBy({ id: userInfo.user_id });
     if (!user) {
       user = await userRepository.create(userInfo);
+      if (user.id === process.env.ADMIN_ID) {
+        user.isAdmin = true;
+      }
       await userRepository.save(user);
       return ActionBaseStatus.SUCCESS;
+    }
+    if (user.id === process.env.ADMIN_ID) {
+      user.isAdmin = true;
     }
     user.personality = userInfo.personality ?? user.personality;
     user.hobbies = userInfo.hobbies ?? user.hobbies;
@@ -35,10 +43,14 @@ export async function updateUserInfo(userInfo: Partial<UserInfo>) {
   }
 }
 
-export async function getUserInfo() {
+export interface GetUserInfoParameters extends ActionParameters {
+  user_id: string;
+}
+
+export async function getUserInfo({ user_id: userId }: GetUserInfoParameters) {
   try {
     const userRepository = dataSource.getRepository(User);
-    return await userRepository.findOneBy({ id: 1 });
+    return await userRepository.findOneBy({ id: userId });
   } catch (e) {
     return e.toString();
   }
@@ -53,6 +65,10 @@ export const updateUserInfoAction = new Action(
     parameters: {
       type: 'object',
       properties: {
+        user_id: {
+          type: 'string',
+          description: 'The user ID that needed to update.',
+        },
         name: {
           type: 'string',
           description: 'User name, e.g. "John".',
@@ -68,7 +84,7 @@ export const updateUserInfoAction = new Action(
             'User hobbies, can be updated over time based on your conversation with the user.',
         },
       },
-      required: [],
+      required: ['user_id'],
     },
   },
   updateUserInfo,
@@ -83,12 +99,12 @@ export const getUserInfoAction = new Action(
     parameters: {
       type: 'object',
       properties: {
-        placeholder: {
+        user_id: {
           type: 'string',
-          description: 'Placeholder to make the parameters non-empty. Fill in any value.',
+          description: 'ID of the user to fetch information from.',
         },
       },
-      required: ['placeholder'],
+      required: ['user_id'],
     },
   },
   getUserInfo,

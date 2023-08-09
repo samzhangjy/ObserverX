@@ -1,7 +1,8 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { CompletionCreateParams } from 'openai/resources/chat';
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
+import type User from './User.js';
 
 export enum MessageRole {
   SYSTEM = 'system',
@@ -10,7 +11,7 @@ export enum MessageRole {
   FUNCTION = 'function',
 }
 
-@Entity()
+@Entity('Message')
 class Message {
   @PrimaryGeneratedColumn('increment')
   public id!: number;
@@ -32,6 +33,12 @@ class Message {
 
   @Column()
   public tokens: number;
+
+  @ManyToOne('User', (user: User) => user.messages, { nullable: true })
+  public sender?: User;
+
+  @Column({ nullable: true })
+  public parentId?: string;
 }
 
 export default Message;

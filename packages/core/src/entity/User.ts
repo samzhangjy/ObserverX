@@ -1,9 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import type Message from './Message.js';
 
-@Entity()
+@Entity('User')
 class User {
-  @PrimaryGeneratedColumn('increment')
-  public id!: number;
+  @PrimaryColumn()
+  public id!: string;
 
   @Column({ nullable: true })
   public name?: string;
@@ -13,6 +14,12 @@ class User {
 
   @Column({ nullable: true })
   public hobbies?: string;
+
+  @OneToMany('Message', (message: Message) => message.sender)
+  public messages!: Message[];
+
+  @Column({ default: false })
+  public isAdmin!: boolean;
 }
 
 export default User;
