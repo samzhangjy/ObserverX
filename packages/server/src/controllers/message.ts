@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { type Request, type Response } from 'express';
 import { getMessages } from '@observerx/core';
+import { getDataSource } from '@observerx/database';
 import Controller from '../utils/controller.js';
 import { Get } from '../utils/handlers.js';
 
@@ -13,6 +14,7 @@ export default class MessageController {
     try {
       const page = parseInt((req.query.page as string) ?? '1', 10);
       const [messages, total] = await getMessages(
+        getDataSource(),
         this.MESSAGES_PER_PAGE,
         (page - 1) * this.MESSAGES_PER_PAGE,
       );
