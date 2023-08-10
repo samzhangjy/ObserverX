@@ -89,9 +89,11 @@ class ObserverX {
   private readonly userRepository: Repository<User> = dataSource.getRepository(User);
 
   private readonly HISTORY_COUNT_LIMIT: number = parseInt(
-    process.env.HISTORY_COUNT_LIMIT ?? '50',
+    process.env.HISTORY_COUNT_LIMIT ?? '80',
     10,
   );
+
+  private readonly MAX_CONTIGUOUS_FUNCTION_CALLS = 8;
 
   /**
    * Create a new bot.
@@ -117,12 +119,14 @@ class ObserverX {
           parentId,
         },
         take: this.HISTORY_COUNT_LIMIT,
-        order: { timestamp: 'ASC' },
+        order: { timestamp: 'DESC' },
       })
       .then((history) => {
-        limitTokensFromMessages(history, modelMap[this.model].tokenLimit / 2).forEach((message) => {
-          this.history.push(RuntimeHistory.fromMessage(message));
-        });
+        limitTokensFromMessages(history.reverse(), modelMap[this.model].tokenLimit - 1000).forEach(
+          (message) => {
+            this.history.push(RuntimeHistory.fromMessage(message));
+          },
+        );
       });
   }
 
@@ -130,7 +134,7 @@ class ObserverX {
    * Chat with the bot.
    * @param payload The message to send to the bot.
    */
-  public async chat(payload: ChatInput): Promise<IChat> {
+  public async chat(payload: ChatInput | null): Promise<IChat> {
     this.userTurns += 1;
     try {
       return this.chatInner(payload);
@@ -162,9 +166,18 @@ class ObserverX {
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
 
     // remove older history to prevent exceeding token limit
-    if (this.history.length > this.HISTORY_COUNT_LIMIT) {
-      this.history.shift();
-    }
+    // NOTE: useless for now since `token-limiter` took place
+    // if (this.history.length > this.HISTORY_COUNT_LIMIT) {
+    //   this.history.shift();
+    // }
+
+    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
+
+    const totalTokens = this.history.reduce(
+      (prev: number, history) => prev + history.tokens ?? 0,
+      0,
+    );
+    console.log('Total tokens: ', totalTokens);
   }
 
   public async addMessageToQueue(payload: ChatInput) {
@@ -183,7 +196,7 @@ class ObserverX {
    * @param payload The message to send to the bot.
    * @private
    */
-  private async *chatInner(payload: ChatInput | null): ChatInner {
+  private async *chatInner(payload: ChatInput | null, functionCallCnt: number = 0): ChatInner {
     // remind bot to update user information
     if (this.userTurns >= this.INFO_UPDATE_DELTA) {
       yield {
@@ -192,7 +205,7 @@ class ObserverX {
       await this.createMessage({
         role: MessageRole.SYSTEM,
         content:
-          "Please update user's personality traits, hobbies and other things according to your conversation.",
+          "Please update user(s)'s personality traits, hobbies and other things according to your conversation. Do not reply to this message.",
       });
       this.userTurns = 0;
       this.isUpdatingUserInfo = true;
@@ -299,9 +312,15 @@ class ObserverX {
       };
 
       // IMPORTANT: `actionResponse` MUST NOT be falsy or OpenAI will throw a remote error
-      const actionResponse =
+      let actionResponse =
         (await action.invoke(actionArgs, this.actionConfig, this.changeBotConfig.bind(this))) ??
         'success';
+      if (functionCallCnt > this.MAX_CONTIGUOUS_FUNCTION_CALLS) {
+        actionResponse = {
+          status: 'error',
+          message: 'Maximum contiguous function call limit reached. Please reply to the user.',
+        };
+      }
       await this.createMessage({
         role: MessageRole.FUNCTION,
         content: actionResponse,
@@ -317,7 +336,7 @@ class ObserverX {
         this.isUpdatingUserInfo = false;
       }
 
-      return yield* this.chatInner(null);
+      return yield* this.chatInner(null, functionCallCnt + 1);
     }
 
     return undefined;
@@ -371,10 +390,13 @@ class ObserverX {
               ? JSON.stringify(history.content)
               : history.role === 'user'
               ? JSON.stringify({
-                  sender: history.sender,
+                  sender: {
+                    id: history.sender?.id,
+                    name: history.sender?.name,
+                  },
                   content: history.content,
                 })
-              : history.content,
+              : history.content ?? '',
           function_call: history.action,
           name: history.actionName,
           id: history.id,
@@ -442,6 +464,9 @@ class ObserverX {
   public changeBotConfig(config: ActionConfig) {
     this.model = config.model ?? this.model;
     this.parentId = config.parentId ?? this.parentId;
+
+    // IMPORTANT: prevent overflowing when switching from high-limit models to low-limit models.
+    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
   }
 }
 

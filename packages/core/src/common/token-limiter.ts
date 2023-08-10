@@ -2,11 +2,17 @@ import { encode } from 'gpt-tokenizer';
 import Message from '../entity/Message.js';
 import { transformMessageToOpenAIFormat } from './transform.js';
 
+export interface BaseMessage {
+  id: number;
+  tokens?: number;
+  content?: string;
+}
+
 export function getTokenCountFromMessage(message: Partial<Message>) {
   return encode(JSON.stringify(transformMessageToOpenAIFormat(message))).length;
 }
 
-export function getTokenCountFromMessages(messages: Message[]) {
+export function getTokenCountFromMessages<T extends BaseMessage>(messages: T[]) {
   let result = 0;
   for (const message of messages) {
     result += message.tokens ?? 0;
@@ -14,13 +20,14 @@ export function getTokenCountFromMessages(messages: Message[]) {
   return result;
 }
 
-export function limitTokensFromMessages(messages: Message[], limit: number) {
+export function limitTokensFromMessages<T extends BaseMessage>(messages: T[], limit: number): T[] {
   const result = messages;
   const modifiedMessages = [];
 
   while (getTokenCountFromMessages(result) >= limit) {
     if (modifiedMessages.length >= messages.length) break;
     const longestMessage = result.reduce((prev, curr) => (prev.tokens > curr.tokens ? prev : curr));
+    if (longestMessage.tokens <= 200) break;
     const longestMessageId = result.findIndex((message) => message.id === longestMessage.id);
     result[
       longestMessageId

@@ -10,7 +10,7 @@ const port = parseInt(process.env.CQ_SERVER_PORT, 10) || 8080;
 const server = `http://${host}:${port}`;
 
 const botMap: Map<string, ObserverX> = new Map();
-const lastReplyTime: Map<string, number> = new Map();
+const hasNewMessages: Map<string, boolean> = new Map();
 
 export interface ISendMessage {
   isPrivate: boolean;
@@ -32,29 +32,12 @@ async function sendMessage({ isPrivate, to, message }: ISendMessage) {
   }
 }
 
-async function handleMessage({ isPrivate, senderId, message, groupId }: IMessageHandler) {
-  console.log(`Received message from ${chalk.green(senderId)}: ${chalk.blue(message)}`);
-  const parentId = isPrivate ? `DM_${senderId}` : `GROUP_${groupId}`;
-  if (!botMap.has(parentId)) {
-    botMap.set(parentId, new ObserverX(isPrivate ? 'private' : 'group', 'GPT-3.5', parentId));
-    lastReplyTime.set(parentId, Date.now() - 10000);
-  }
+async function getResponse(parentId: string, isPrivate: boolean, sendTo: string) {
+  if (!hasNewMessages.get(parentId)) return;
+
+  hasNewMessages.set(parentId, false);
   const bot = botMap.get(parentId);
-
-  if (!isPrivate && Date.now() - lastReplyTime.get(parentId) < 3000) {
-    console.log('Too frequent, skip.');
-    await bot.addMessageToQueue({
-      message,
-      senderId,
-    });
-    return;
-  }
-  lastReplyTime.set(parentId, Date.now());
-
-  const stream = await bot.chat({
-    message,
-    senderId,
-  });
+  const stream = await bot.chat(null);
 
   let reply = '';
 
@@ -80,16 +63,31 @@ async function handleMessage({ isPrivate, senderId, message, groupId }: IMessage
       );
     } else if (segment.type === 'action-result') {
       process.stdout.write(chalk.gray('done.\n'));
+      process.stdout.write(`${chalk.gray('Action result: ')}${JSON.stringify(segment.result)}\n`);
     }
   }
 
   await sendMessage({
     isPrivate,
-    to: isPrivate ? senderId : groupId,
+    to: sendTo,
     message: reply,
   });
+}
 
-  lastReplyTime.set(parentId, Date.now());
+async function handleMessage({ isPrivate, senderId, message, groupId }: IMessageHandler) {
+  console.log(`Received message from ${chalk.green(senderId)}: ${chalk.blue(message)}`);
+  const parentId = isPrivate ? `DM_${senderId}` : `GROUP_${groupId}`;
+  if (!botMap.has(parentId)) {
+    botMap.set(parentId, new ObserverX(isPrivate ? 'private' : 'group', 'GPT-3.5', parentId));
+    setInterval(() => getResponse(parentId, isPrivate, isPrivate ? senderId : groupId), 10000);
+  }
+  const bot = botMap.get(parentId);
+
+  await bot.addMessageToQueue({
+    message,
+    senderId,
+  });
+  hasNewMessages.set(parentId, true);
 }
 
 startReverseServer(handleMessage);

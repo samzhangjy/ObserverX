@@ -11,7 +11,7 @@ export async function getBotModel(_arg0: any, config: ActionConfig) {
 
 export interface ChangeBotModelParameters extends ActionParameters {
   invoker_id: string;
-  model: string;
+  model: 'GPT-3.5' | 'GPT-4';
 }
 
 export async function changeBotModel(
@@ -34,8 +34,8 @@ export async function changeBotModel(
     };
   }
   changeConfig({
-    model,
     ...config,
+    model,
   });
   return { status: 'success' };
 }

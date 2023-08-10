@@ -25,6 +25,7 @@
     ],
     "no-console": "off",
     "no-restricted-syntax": "off",
-    "class-methods-use-this": "off"
+    "class-methods-use-this": "off",
+    "no-nested-ternary": "off"
   }
 }

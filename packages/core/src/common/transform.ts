@@ -9,7 +9,18 @@ export function transformMessageToOpenAIFormat(
 ): CreateChatCompletionRequestStreaming.Message {
   return {
     role: message.role,
-    content: message.role === 'function' ? JSON.stringify(message.content) : message.content,
+    content:
+      message.role === 'function'
+        ? JSON.stringify(message.content)
+        : message.role === 'user'
+        ? JSON.stringify({
+            sender: {
+              id: message.sender?.id,
+              name: message.sender?.name,
+            },
+            content: message.content,
+          })
+        : message.content,
     function_call: message.action as CreateChatCompletionRequestStreaming.Message.FunctionCall,
     name: message.actionName,
   };
