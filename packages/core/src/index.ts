@@ -68,3 +68,14 @@ export function chat(...params: ConstructorParameters<typeof ObserverX>) {
 
 export { default, type ChatResult, type IChat } from './connector.js';
 export { default as getMessages } from './messages.js';
+export { addAction } from './actions/index.js';
+export {
+  default as Action,
+  type ActionInvoker,
+  type ActionParameters,
+  type ActionProperties,
+  type ActionConfig,
+  type ActionDoc,
+  type ActionBaseStatus,
+  type ChangeActionConfig,
+} from './actions/action.js';

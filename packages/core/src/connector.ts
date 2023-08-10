@@ -1,15 +1,15 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import * as fs from 'fs';
-import * as path from 'path';
-import { DeepPartial, Repository } from 'typeorm';
+import { DataSource, DeepPartial, Repository } from 'typeorm';
 import { Chat, CompletionCreateParams } from 'openai/resources/chat';
 import { encode } from 'gpt-tokenizer';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import { type Entity } from '@observerx/database';
 import RuntimeHistory from './runtime-history.js';
 import { actionMap, actions } from './actions/index.js';
 import Message, { MessageRole } from './entity/Message.js';
-import dataSource from './data-source.js';
 import { BotModel, modelMap } from './config.js';
 import { ActionConfig } from './actions/action.js';
 import { getTokenCountFromMessage, limitTokensFromMessages } from './common/token-limiter.js';
@@ -18,6 +18,9 @@ import User from './entity/User.js';
 import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
 import ChatCompletionChunk = Chat.ChatCompletionChunk;
 import ChatCompletion = Chat.ChatCompletion;
+
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export type BotPrompt = 'default' | 'private' | 'group';
 
@@ -68,10 +71,21 @@ export interface ChatInput {
   message: string;
 }
 
+export interface IObserverX {
+  prompt?: BotPrompt;
+  model?: BotModel;
+  parentId?: string;
+  dataSource: DataSource;
+}
+
 /**
  * ObserverX core.
  */
 class ObserverX {
+  public model: BotModel = 'GPT-3.5';
+
+  public parentId: string = 'UNKNOWN';
+
   private history: RuntimeHistory[] = [];
 
   private currentPrompt: string | null = null;
@@ -84,9 +98,9 @@ class ObserverX {
 
   private readonly INFO_UPDATE_DELTA = 8;
 
-  private readonly messageRepository: Repository<Message> = dataSource.getRepository(Message);
+  private readonly messageRepository: Repository<Message>;
 
-  private readonly userRepository: Repository<User> = dataSource.getRepository(User);
+  private readonly userRepository: Repository<User>;
 
   private readonly HISTORY_COUNT_LIMIT: number = parseInt(
     process.env.HISTORY_COUNT_LIMIT ?? '80',
@@ -95,17 +109,31 @@ class ObserverX {
 
   private readonly MAX_CONTIGUOUS_FUNCTION_CALLS = 8;
 
+  private readonly prompt: BotPrompt = 'default';
+
+  private readonly dataSource: DataSource;
+
   /**
    * Create a new bot.
    * @param prompt Bot prompt to use.
    * @param model Bot model to use.
    * @param parentId Conversation parent ID.
+   * @param dataSource TypeORM database source to use.
    */
-  constructor(
-    private prompt: BotPrompt = 'default',
-    public model: BotModel = 'GPT-3.5',
-    public parentId: string = 'UNKNOWN',
-  ) {
+  constructor({
+    prompt = 'default',
+    model = 'GPT-3.5',
+    parentId = 'UNKNOWN',
+    dataSource,
+  }: IObserverX) {
+    this.dataSource = dataSource;
+    this.prompt = prompt;
+    this.model = model;
+    this.parentId = parentId;
+
+    this.messageRepository = this.dataSource.getRepository(Message);
+    this.userRepository = this.dataSource.getRepository(User);
+
     this.loadPrompt();
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -130,6 +158,18 @@ class ObserverX {
       });
   }
 
+  private get actionConfig(): ActionConfig {
+    return {
+      model: this.model,
+      parentId: this.parentId,
+      dataSource: this.dataSource,
+    };
+  }
+
+  public static getDatabaseEntities(): Entity[] {
+    return [path.join(__dirname, './entity/*.{js,ts}')];
+  }
+
   /**
    * Chat with the bot.
    * @param payload The message to send to the bot.
@@ -141,6 +181,25 @@ class ObserverX {
     } catch (e) {
       return `[ObserverX] An unexpected error occurred: ${e.toString()}.`;
     }
+  }
+
+  public async addMessageToQueue(payload: ChatInput) {
+    await this.createMessage({
+      role: MessageRole.USER,
+      content: payload.message,
+      parentId: this.parentId,
+      sender: {
+        id: payload.senderId,
+      },
+    });
+  }
+
+  public changeBotConfig(config: ActionConfig) {
+    this.model = config.model ?? this.model;
+    this.parentId = config.parentId ?? this.parentId;
+
+    // IMPORTANT: prevent overflowing when switching from high-limit models to low-limit models.
+    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
   }
 
   /**
@@ -180,20 +239,10 @@ class ObserverX {
     console.log('Total tokens: ', totalTokens);
   }
 
-  public async addMessageToQueue(payload: ChatInput) {
-    await this.createMessage({
-      role: MessageRole.USER,
-      content: payload.message,
-      parentId: this.parentId,
-      sender: {
-        id: payload.senderId,
-      },
-    });
-  }
-
   /**
    * Inner chat logic.
    * @param payload The message to send to the bot.
+   * @param functionCallCnt Total recursions done to make function calls.
    * @private
    */
   private async *chatInner(payload: ChatInput | null, functionCallCnt: number = 0): ChatInner {
@@ -452,21 +501,6 @@ class ObserverX {
         // ignore
       }
     }
-  }
-
-  private get actionConfig(): ActionConfig {
-    return {
-      model: this.model,
-      parentId: this.parentId,
-    };
-  }
-
-  public changeBotConfig(config: ActionConfig) {
-    this.model = config.model ?? this.model;
-    this.parentId = config.parentId ?? this.parentId;
-
-    // IMPORTANT: prevent overflowing when switching from high-limit models to low-limit models.
-    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
   }
 }
 

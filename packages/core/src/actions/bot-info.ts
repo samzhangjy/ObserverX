@@ -1,4 +1,3 @@
-import dataSource from '../data-source.js';
 import User from '../entity/User.js';
 import Action, { ActionConfig, ActionParameters, ChangeActionConfig } from './action.js';
 
@@ -19,7 +18,7 @@ export async function changeBotModel(
   config: ActionConfig,
   changeConfig: ChangeActionConfig,
 ) {
-  const userRepository = dataSource.getRepository(User);
+  const userRepository = config.dataSource.getRepository(User);
   const user = await userRepository.findOneBy({ id: invoker_id });
   if (!user) {
     return {

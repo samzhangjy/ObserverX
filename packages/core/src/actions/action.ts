@@ -1,10 +1,10 @@
-import { CompletionCreateParams } from 'openai/resources/chat';
-import Function = CompletionCreateParams.CreateChatCompletionRequestNonStreaming.Function;
+import { DataSource } from 'typeorm';
 import { BotModel } from '../config.js';
 
 export interface ActionConfig {
   model: BotModel;
   parentId: string;
+  dataSource: DataSource;
 }
 
 export interface ActionParameters {
@@ -19,9 +19,24 @@ export type ActionInvoker<T extends ActionParameters = ActionParameters, U exten
   changeConfig: ChangeActionConfig,
 ) => U;
 
-class Action<T extends ActionInvoker = ActionInvoker> {
+export interface ActionProperties {
+  type: 'string' | 'number';
+  description: string;
+}
+
+export interface ActionDoc<T extends string = string> {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<T, ActionProperties>;
+    required: (keyof ActionDoc['parameters']['properties'])[];
+  };
+}
+
+class Action<T extends ActionInvoker = ActionInvoker, U extends string = string> {
   constructor(
-    public doc: Function,
+    public doc: ActionDoc<U>,
     private action: T,
   ) {}
 

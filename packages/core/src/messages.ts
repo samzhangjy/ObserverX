@@ -1,9 +1,13 @@
-import dataSource from './data-source.js';
+import { DataSource } from 'typeorm';
 import Message from './entity/Message.js';
 
-const messageRepository = dataSource.getRepository(Message);
-
-async function getMessages(take: number, skip: number, order: 'DESC' | 'ASC' = 'DESC') {
+async function getMessages(
+  dataSource: DataSource,
+  take: number,
+  skip: number,
+  order: 'DESC' | 'ASC' = 'DESC',
+) {
+  const messageRepository = dataSource.getRepository(Message);
   return messageRepository.findAndCount({
     take,
     skip,

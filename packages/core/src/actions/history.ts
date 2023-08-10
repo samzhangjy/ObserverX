@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { instanceToPlain } from 'class-transformer';
-import dataSource from '../data-source.js';
 import Message from '../entity/Message.js';
 import Action, { ActionConfig, ActionParameters } from './action.js';
 import { modelMap } from '../config.js';
@@ -20,19 +19,12 @@ export interface SearchChatHistoryParameters extends ActionParameters {
  * @param params Parameters used in the SQL.
  */
 function getQueryWithParams(sql: string, params: any[]) {
-  const dateFormat = /^(\d{4})-(\d{2})-(\d{2})$/;
-  const dateFormatWithTime = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
   let result = sql;
 
   params.forEach((value, i) => {
     const index = `$${i + 1}`;
     if (typeof value === 'string') {
-      // check if it is a date
-      result = result.replace(
-        index,
-        // dateFormat.test(value) || dateFormatWithTime.test(value) ? `'${value}'` : `"${value}"`,
-        `'${value}'`,
-      );
+      result = result.replace(index, `'${value}'`);
     }
 
     if (typeof value === 'object') {
@@ -71,7 +63,7 @@ export async function searchChatHistory(
       .map((t) => t.trim());
   }
 
-  const repository = dataSource.getRepository(Message);
+  const repository = config.dataSource.getRepository(Message);
 
   const searchQuery = repository
     .createQueryBuilder()
@@ -132,8 +124,8 @@ export interface GetMessageParameters {
   id: number;
 }
 
-export async function getMessage({ id: messageId }: GetMessageParameters) {
-  const repository = dataSource.getRepository(Message);
+export async function getMessage({ id: messageId }: GetMessageParameters, config: ActionConfig) {
+  const repository = config.dataSource.getRepository(Message);
   return repository.findOneBy({ id: messageId });
 }
 

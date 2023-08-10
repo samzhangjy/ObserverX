@@ -5,7 +5,7 @@ import { searchChatHistoryAction, getMessageAction } from './history.js';
 import getCurrentTimeAction from './time.js';
 import { changeBotModelAction, getBotModelAction } from './bot-info.js';
 
-const actionInstances = [
+const defaultActionInstances = [
   runNodeCodeAction,
   updateUserInfoAction,
   getUserInfoAction,
@@ -16,9 +16,14 @@ const actionInstances = [
   changeBotModelAction,
 ];
 
-export const actions = actionInstances.map((action) => action.doc);
+export const actions = defaultActionInstances.map((action) => action.doc);
 
-export const actionMap: Record<string, Action> = actionInstances.reduce(
+export const actionMap: Record<string, Action> = defaultActionInstances.reduce(
   (o, action) => ({ ...o, [action.doc.name]: action }),
   {},
 );
+
+export function addAction(action: Action) {
+  actions.push(action.doc);
+  actionMap[action.doc.name] = action;
+}

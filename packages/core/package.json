@@ -33,6 +33,7 @@
     "openai": "4.0.0-beta.6",
     "pg": "^8.11.1",
     "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "@observerx/database": "workspace:*"
   }
 }

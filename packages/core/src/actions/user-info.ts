@@ -1,7 +1,6 @@
 import 'dotenv/config';
-import dataSource from '../data-source.js';
 import User from '../entity/User.js';
-import Action, { ActionBaseStatus, ActionParameters } from './action.js';
+import Action, { ActionBaseStatus, ActionConfig, ActionParameters } from './action.js';
 
 export interface UpdateUserInfoParameters extends ActionParameters {
   user_id: string;
@@ -10,9 +9,12 @@ export interface UpdateUserInfoParameters extends ActionParameters {
   hobbies?: string;
 }
 
-export async function updateUserInfo(userInfo: Partial<UpdateUserInfoParameters>) {
+export async function updateUserInfo(
+  userInfo: Partial<UpdateUserInfoParameters>,
+  config: ActionConfig,
+) {
   try {
-    const userRepository = dataSource.getRepository(User);
+    const userRepository = config.dataSource.getRepository(User);
     let user = await userRepository.findOneBy({ id: userInfo.user_id });
     if (!user) {
       user = await userRepository.create(userInfo);
@@ -47,9 +49,12 @@ export interface GetUserInfoParameters extends ActionParameters {
   user_id: string;
 }
 
-export async function getUserInfo({ user_id: userId }: GetUserInfoParameters) {
+export async function getUserInfo(
+  { user_id: userId }: GetUserInfoParameters,
+  config: ActionConfig,
+) {
   try {
-    const userRepository = dataSource.getRepository(User);
+    const userRepository = config.dataSource.getRepository(User);
     return await userRepository.findOneBy({ id: userId });
   } catch (e) {
     return e.toString();
