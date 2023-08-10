@@ -3,7 +3,9 @@ import axios from 'axios';
 import ObserverX from '@observerx/core';
 import process from 'process';
 import chalk from 'chalk';
+import { addEntities, getDataSource } from '@observerx/database';
 import startReverseServer, { type IMessageHandler } from './server.js';
+import Contact from './entity/Contact';
 
 const host = process.env.CQ_SERVER_HOST ?? '127.0.0.1';
 const port = parseInt(process.env.CQ_SERVER_PORT, 10) || 8080;
@@ -11,6 +13,12 @@ const server = `http://${host}:${port}`;
 
 const botMap: Map<string, ObserverX> = new Map();
 const hasNewMessages: Map<string, boolean> = new Map();
+
+addEntities(...ObserverX.getDatabaseEntities(), Contact);
+
+const dataSource = getDataSource();
+
+await dataSource.initialize();
 
 export interface ISendMessage {
   isPrivate: boolean;
@@ -78,7 +86,15 @@ async function handleMessage({ isPrivate, senderId, message, groupId }: IMessage
   console.log(`Received message from ${chalk.green(senderId)}: ${chalk.blue(message)}`);
   const parentId = isPrivate ? `DM_${senderId}` : `GROUP_${groupId}`;
   if (!botMap.has(parentId)) {
-    botMap.set(parentId, new ObserverX(isPrivate ? 'private' : 'group', 'GPT-3.5', parentId));
+    botMap.set(
+      parentId,
+      new ObserverX({
+        prompt: isPrivate ? 'private' : 'group',
+        model: 'GPT-3.5',
+        parentId,
+        dataSource,
+      }),
+    );
     setInterval(() => getResponse(parentId, isPrivate, isPrivate ? senderId : groupId), 10000);
   }
   const bot = botMap.get(parentId);
