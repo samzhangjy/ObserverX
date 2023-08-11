@@ -21,13 +21,3 @@ for await (const part of stream) {
   console.log(part);
 }
 ```
-
-Or if you want to have an interactive session with the bot in the console:
-
-```js
-import { chat } from '@observerx/core';
-
-chat();
-```
-
-However, this feature might be removed from `@observerx/core` in the future and move it into a separate package.
