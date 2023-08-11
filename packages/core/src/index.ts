@@ -13,3 +13,5 @@ export {
 } from './actions/action.js';
 export { default as User } from './entity/User.js';
 export { default as Message } from './entity/Message.js';
+export { default as Platform } from './platform.js';
+export { type BotModel } from './config.js';

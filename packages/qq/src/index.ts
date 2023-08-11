@@ -1,23 +1,13 @@
 import 'dotenv/config';
-import ObserverX, { addActions } from '@observerx/core';
+import ObserverX, { addActions, type BotModel, ChatResult, Platform } from '@observerx/core';
 import process from 'process';
 import chalk from 'chalk';
-import { addEntities, getDataSource } from '@observerx/database';
+import { DataSource, Repository } from 'typeorm';
+import { Entity } from '@observerx/database';
 import startReverseServer, { type IMessageHandler } from './server.js';
 import Contact, { ContactType } from './entity/Contact.js';
 import { getContactInfoAction, refreshContactInfoAction } from './actions/contact-info.js';
 import { getGroupName, sendMessage } from './gocq.js';
-
-const botMap: Map<string, ObserverX> = new Map();
-const hasNewMessages: Map<string, boolean> = new Map();
-
-addEntities(...ObserverX.getDatabaseEntities(), Contact);
-
-const dataSource = getDataSource();
-
-await dataSource.initialize();
-
-addActions(getContactInfoAction, refreshContactInfoAction);
 
 export interface ISendMessage {
   isPrivate: boolean;
@@ -25,25 +15,126 @@ export interface ISendMessage {
   message: string;
 }
 
-async function getResponse(parentId: string, isPrivate: boolean, sendTo: string) {
-  if (!hasNewMessages.get(parentId)) return;
+class PlatformQQ implements Platform {
+  public readonly platformActions = ['get_model', 'set_model'] as const;
 
-  hasNewMessages.set(parentId, false);
-  const bot = botMap.get(parentId);
-  const stream = await bot.chat(null);
+  private readonly botMap: Map<string, ObserverX> = new Map();
 
-  let reply = '';
+  private readonly hasNewMessages: Map<string, boolean> = new Map();
 
-  for await (const segment of stream) {
+  private readonly contactRepository: Repository<Contact>;
+
+  private readonly dataSource: DataSource;
+
+  constructor(dataSource: DataSource) {
+    this.dataSource = dataSource;
+    if (!this.dataSource.isInitialized) {
+      throw new Error('Data source not initialized.');
+    }
+
+    this.contactRepository = dataSource.getRepository(Contact);
+
+    addActions(getContactInfoAction, refreshContactInfoAction);
+  }
+
+  public static getDatabaseEntities(): Entity[] {
+    return [Contact];
+  }
+
+  public start() {
+    startReverseServer(this.handleMessage.bind(this));
+  }
+
+  async getResponse(parentId: string, isPrivate: boolean, sendTo: string) {
+    if (!this.hasNewMessages.get(parentId)) return;
+
+    this.hasNewMessages.set(parentId, false);
+    const bot = this.botMap.get(parentId);
+    const stream = await bot.chat(null);
+
+    let reply = '';
+
+    for await (const segment of stream) {
+      this.logSegment(segment);
+      if (typeof segment === 'string') {
+        reply = segment;
+        break;
+      } else if (segment.type === 'message-part') {
+        reply += segment.content;
+      }
+    }
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    currentContact.model = bot.model;
+    await this.contactRepository.save(currentContact);
+
+    await sendMessage({
+      isPrivate,
+      to: sendTo,
+      message: reply,
+    });
+  }
+
+  async handleMessage({ isPrivate, senderId, message, groupId, senderNickname }: IMessageHandler) {
+    console.log(
+      `Received message from ${chalk.green(senderId)}${
+        !isPrivate ? ` in group ${chalk.yellow(groupId)}` : ''
+      }: ${chalk.blue(message)}`,
+    );
+    const parentId = isPrivate ? `DM_${senderId}` : `GROUP_${groupId}`;
+
+    let currentContact = await this.contactRepository.findOneBy({ parentId });
+    if (!currentContact) {
+      currentContact = await this.contactRepository.create({
+        parentId,
+        type: isPrivate ? ContactType.SINGLE_USER_DIRECT_MESSAGE : ContactType.GROUP_MESSAGE,
+        name: isPrivate ? senderNickname : await getGroupName(groupId),
+        model: 'GPT-3.5',
+      });
+      await this.contactRepository.save(currentContact);
+    }
+
+    if (!this.botMap.has(parentId)) {
+      this.botMap.set(
+        parentId,
+        new ObserverX({
+          prompt: isPrivate ? 'private' : 'group',
+          model: (currentContact.model as BotModel) ?? 'GPT-3.5',
+          parentId,
+          dataSource: this.dataSource,
+        }),
+      );
+      setInterval(() => {
+        console.log(chalk.gray('Checking for new messages...'));
+        this.getResponse(parentId, isPrivate, isPrivate ? senderId : groupId);
+      }, 10000);
+    }
+    const bot = this.botMap.get(parentId);
+
+    await bot.addMessageToQueue({
+      message,
+      senderId,
+    });
+    console.log(`Added message to queue. Total tokens: ${chalk.blue(bot.totalTokens)}`);
+    this.hasNewMessages.set(parentId, true);
+  }
+
+  public invokePlatformAction(actionName: (typeof this.platformActions)[number], ...args): any {
+    if (actionName === 'get_model') {
+      return this.getBotModel(...(args as Parameters<typeof this.getBotModel>));
+    }
+    if (actionName === 'set_model') {
+      return this.setBotModel(...(args as Parameters<typeof this.setBotModel>));
+    }
+    return null;
+  }
+
+  private logSegment(segment: string | ChatResult) {
     if (typeof segment === 'string') {
       console.log(chalk.bold.red(segment));
-      reply = segment;
-      break;
     } else if (segment.type === 'message-start') {
       process.stdout.write(chalk.bold.blue('Replying with: '));
     } else if (segment.type === 'message-part') {
       process.stdout.write(segment.content);
-      reply += segment.content;
     } else if (segment.type === 'message-end') {
       process.stdout.write('\n');
     } else if (segment.type === 'action') {
@@ -60,60 +151,23 @@ async function getResponse(parentId: string, isPrivate: boolean, sendTo: string)
     }
   }
 
-  await sendMessage({
-    isPrivate,
-    to: sendTo,
-    message: reply,
-  });
-}
-
-async function handleMessage({
-  isPrivate,
-  senderId,
-  message,
-  groupId,
-  senderNickname,
-}: IMessageHandler) {
-  console.log(
-    `Received message from ${chalk.green(senderId)}${
-      !isPrivate ? ` in group ${chalk.yellow(groupId)}` : ''
-    }: ${chalk.blue(message)}`,
-  );
-  const parentId = isPrivate ? `DM_${senderId}` : `GROUP_${groupId}`;
-  const contactRepository = dataSource.getRepository(Contact);
-
-  if (!(await contactRepository.findOneBy({ parentId }))) {
-    const currentContact = await contactRepository.create({
-      parentId,
-      type: isPrivate ? ContactType.SINGLE_USER_DIRECT_MESSAGE : ContactType.GROUP_MESSAGE,
-      name: isPrivate ? senderNickname : await getGroupName(groupId),
-    });
-    await contactRepository.save(currentContact);
+  private async getBotModel(parentId: string) {
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    return currentContact.model;
   }
 
-  if (!botMap.has(parentId)) {
-    botMap.set(
-      parentId,
-      new ObserverX({
-        prompt: isPrivate ? 'private' : 'group',
-        model: 'GPT-3.5',
-        parentId,
-        dataSource,
-      }),
-    );
-    setInterval(() => {
-      console.log(chalk.gray('Checking for new messages...'));
-      getResponse(parentId, isPrivate, isPrivate ? senderId : groupId);
-    }, 10000);
+  private async setBotModel(parentId: string, model: BotModel) {
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    currentContact.model = model;
+    if (this.botMap.has(parentId)) {
+      const bot = this.botMap.get(parentId);
+      bot.changeBotConfig({
+        ...bot.getBotConfig(),
+        model,
+      });
+    }
+    await this.contactRepository.save(currentContact);
   }
-  const bot = botMap.get(parentId);
-
-  await bot.addMessageToQueue({
-    message,
-    senderId,
-  });
-  console.log(`Added message to queue. Total tokens: ${chalk.blue(bot.totalTokens)}`);
-  hasNewMessages.set(parentId, true);
 }
 
-startReverseServer(handleMessage);
+export default PlatformQQ;

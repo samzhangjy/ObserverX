@@ -166,6 +166,10 @@ class ObserverX {
     };
   }
 
+  public getBotConfig() {
+    return this.actionConfig;
+  }
+
   public static getDatabaseEntities(): Entity[] {
     return [path.join(__dirname, './entity/*.{js,ts}')];
   }

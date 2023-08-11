@@ -15,6 +15,9 @@ class Contact {
 
   @Column({ type: 'enum', enum: ContactType })
   public type!: ContactType;
+
+  @Column({ nullable: true })
+  public model?: string;
 }
 
 export default Contact;
