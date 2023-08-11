@@ -28,6 +28,6 @@ export function addAction(action: Action) {
   actionMap[action.doc.name] = action;
 }
 
-export function addActions(...actions: Action[]) {
-  actions.forEach((action) => addAction(action));
+export function addActions(...toAdd: Action[]) {
+  toAdd.forEach((action) => addAction(action));
 }
