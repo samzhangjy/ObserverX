@@ -9,6 +9,7 @@ app.use(express.json());
 export interface IMessageHandler {
   isPrivate: boolean;
   senderId: string;
+  senderNickname: string;
   groupId?: string;
   message: string;
 }
@@ -27,6 +28,7 @@ function startReverseServer(handler: MessageHandler) {
     await handler({
       isPrivate,
       senderId: req.body.user_id.toString(),
+      senderNickname: req.body.sender.nickname,
       groupId: isPrivate ? null : req.body.group_id.toString(),
       message: req.body.message,
     });
