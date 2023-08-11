@@ -32,6 +32,12 @@ export async function changeBotModel(
       status: 'error',
     };
   }
+  if (!['GPT-3.5', 'GPT-4'].includes(model)) {
+    return {
+      message: 'Model must be either GPT-3.5 or GPT-4.',
+      status: 'error',
+    };
+  }
   changeConfig({
     ...config,
     model,

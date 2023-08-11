@@ -27,3 +27,7 @@ export function addAction(action: Action) {
   actions.push(action.doc);
   actionMap[action.doc.name] = action;
 }
+
+export function addActions(...actions: Action[]) {
+  actions.forEach((action) => addAction(action));
+}

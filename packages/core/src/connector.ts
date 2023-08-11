@@ -231,12 +231,10 @@ class ObserverX {
     // }
 
     this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
+  }
 
-    const totalTokens = this.history.reduce(
-      (prev: number, history) => prev + history.tokens ?? 0,
-      0,
-    );
-    console.log('Total tokens: ', totalTokens);
+  public get totalTokens() {
+    return this.history.reduce((prev: number, history) => prev + history.tokens ?? 0, 0);
   }
 
   /**
