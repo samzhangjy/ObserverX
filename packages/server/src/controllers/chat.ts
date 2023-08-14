@@ -1,7 +1,8 @@
+import 'reflect-metadata';
 import { type Request, type Response } from 'express';
 import ObserverX, { ChatResult } from '@observerx/core';
-import Controller from '../utils/controller.js';
-import { Get, Post } from '../utils/handlers.js';
+import { Controller, Get, Post } from '@observerx/server-util';
+import { getDataSource } from '@observerx/database';
 
 @Controller('/chat')
 export default class ChatController {
@@ -12,7 +13,7 @@ export default class ChatController {
   private isStreaming: boolean = false;
 
   constructor() {
-    this.bot = new ObserverX();
+    this.bot = new ObserverX({ dataSource: getDataSource(), parentId: 'HTTP_SERVER' });
   }
 
   @Get()

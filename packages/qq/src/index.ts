@@ -4,7 +4,7 @@ import process from 'process';
 import chalk from 'chalk';
 import { DataSource, Repository } from 'typeorm';
 import { Entity } from '@observerx/database';
-import startReverseServer, { type IMessageHandler } from './server.js';
+import { type IMessageHandler, startReverseServer, stopReverseServer } from './server.js';
 import Contact, { ContactType } from './entity/Contact.js';
 import { getContactInfoAction, refreshContactInfoAction } from './actions/contact-info.js';
 import { getGroupName, sendMessage } from './gocq.js';
@@ -16,7 +16,12 @@ export interface ISendMessage {
 }
 
 class PlatformQQ implements Platform {
-  public readonly platformActions = ['get_model', 'set_model'] as const;
+  public readonly platformActions = [
+    'get_model',
+    'set_model',
+    'get_contacts',
+    'set_contact_enabled',
+  ] as const;
 
   private readonly botMap: Map<string, ObserverX> = new Map();
 
@@ -35,6 +40,13 @@ class PlatformQQ implements Platform {
     this.contactRepository = dataSource.getRepository(Contact);
 
     addActions(getContactInfoAction, refreshContactInfoAction);
+
+    this.initialize();
+  }
+
+  public initialize() {
+    this.botMap.clear();
+    this.hasNewMessages.clear();
   }
 
   public static getDatabaseEntities(): Entity[] {
@@ -43,6 +55,10 @@ class PlatformQQ implements Platform {
 
   public start() {
     startReverseServer(this.handleMessage.bind(this));
+  }
+
+  public stop() {
+    stopReverseServer();
   }
 
   async getResponse(parentId: string, isPrivate: boolean, sendTo: string) {
@@ -93,6 +109,8 @@ class PlatformQQ implements Platform {
       await this.contactRepository.save(currentContact);
     }
 
+    if (!currentContact.enabled) return;
+
     if (!this.botMap.has(parentId)) {
       this.botMap.set(
         parentId,
@@ -124,6 +142,12 @@ class PlatformQQ implements Platform {
     }
     if (actionName === 'set_model') {
       return this.setBotModel(...(args as Parameters<typeof this.setBotModel>));
+    }
+    if (actionName === 'get_contacts') {
+      return this.getContacts();
+    }
+    if (actionName === 'set_contact_enabled') {
+      return this.setContactEnabled(...(args as Parameters<typeof this.setContactEnabled>));
     }
     return null;
   }
@@ -157,6 +181,9 @@ class PlatformQQ implements Platform {
   }
 
   private async setBotModel(parentId: string, model: BotModel) {
+    if (!['GPT-3.5', 'GPT-4'].includes(model)) {
+      throw new Error('Invalid model.');
+    }
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.model = model;
     if (this.botMap.has(parentId)) {
@@ -166,6 +193,16 @@ class PlatformQQ implements Platform {
         model,
       });
     }
+    await this.contactRepository.save(currentContact);
+  }
+
+  private async getContacts() {
+    return this.contactRepository.find();
+  }
+
+  private async setContactEnabled(parentId: string, enabled: boolean) {
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    currentContact.enabled = enabled;
     await this.contactRepository.save(currentContact);
   }
 }

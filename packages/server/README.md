@@ -11,14 +11,14 @@ $ npm install @observerx/server
 ## Usage
 
 ```js
-import ObserverXServer from '@observerx/server';
+import PlatformHttpServer from '@observerx/server';
 
-const server = new ObserverXServer();
+const dataSource = getDataSource();
+const server = new PlatformHttpServer(dataSource);
 server.start();
 // Server is listening on localhost:3000
 
-// You can also set a port number and a host name
-// server.start(3000, 'localhost');
+// You can also set a port number and a host name through environment variables
 ```
 
 > Note: Configurations of ObserverX core should be written in environment variables or a `.env` file.

@@ -2,8 +2,7 @@ import 'dotenv/config';
 import { type Request, type Response } from 'express';
 import { getMessages } from '@observerx/core';
 import { getDataSource } from '@observerx/database';
-import Controller from '../utils/controller.js';
-import { Get } from '../utils/handlers.js';
+import { Controller, Get } from '@observerx/server-util';
 
 @Controller('/messages')
 export default class MessageController {

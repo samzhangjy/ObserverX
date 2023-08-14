@@ -11,6 +11,10 @@ abstract class Platform {
 
   public abstract start(): void;
 
+  public abstract stop(): void;
+
+  public abstract initialize(): void;
+
   static getDatabaseEntities(): Entity[] {
     return [];
   }

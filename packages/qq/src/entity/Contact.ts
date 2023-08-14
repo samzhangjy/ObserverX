@@ -18,6 +18,9 @@ class Contact {
 
   @Column({ nullable: true })
   public model?: string;
+
+  @Column({ default: true })
+  public enabled!: boolean;
 }
 
 export default Contact;

@@ -3,6 +3,7 @@ import express from 'express';
 
 const app = express();
 const port = parseInt(process.env.CQ_REVERSE_SERVER_PORT, 10) || 8081;
+let server: ReturnType<typeof app.listen>;
 
 app.use(express.json());
 
@@ -16,7 +17,7 @@ export interface IMessageHandler {
 
 export type MessageHandler = (params: IMessageHandler) => any | Promise<any>;
 
-function startReverseServer(handler: MessageHandler) {
+export function startReverseServer(handler: MessageHandler) {
   app.post('/', async (req, res) => {
     const event = req.body.post_type;
     if (event !== 'message') {
@@ -34,9 +35,11 @@ function startReverseServer(handler: MessageHandler) {
     });
   });
 
-  app.listen(port, () => {
+  server = app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
   });
 }
 
-export default startReverseServer;
+export function stopReverseServer() {
+  server?.close();
+}

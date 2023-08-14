@@ -199,6 +199,9 @@ class ObserverX {
   }
 
   public changeBotConfig(config: ActionConfig) {
+    if (!['GPT-3.5', 'GPT-4'].includes(config.model)) {
+      throw new Error('Invalid model.');
+    }
     this.model = config.model ?? this.model;
     this.parentId = config.parentId ?? this.parentId;
 
