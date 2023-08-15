@@ -4,6 +4,7 @@ import ObserverX from '@observerx/core';
 import PlatformQQ from '@observerx/qq';
 import { Application } from '@observerx/server-util';
 import expressBasicAuth from 'express-basic-auth';
+import cors from 'cors';
 import platforms from './platforms.js';
 import controllers from './controllers/index.js';
 
@@ -37,7 +38,10 @@ class PanelServer {
   }
 
   public start() {
-    this.httpServer.start();
+    this.httpServer.start(
+      parseInt(process.env.PANEL_PORT ?? '3000', 10),
+      process.env.PANEL_HOST ?? 'localhost',
+    );
   }
 
   public stop() {

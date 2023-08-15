@@ -4,6 +4,7 @@ import * as http from 'http';
 import express, { Application as ExApplication, Handler, RequestHandler } from 'express';
 import { IRouter } from './utils/handlers.js';
 import MetadataKeys from './utils/metadata.js';
+import cors from 'cors';
 
 /**
  * Server application impl.
@@ -19,7 +20,7 @@ class Application {
 
   constructor(controllers: any[], middlewares: RequestHandler[]) {
     this.expressInstance = express();
-    this.expressInstance.use(express.json(), ...middlewares);
+    this.expressInstance.use(cors({ origin: '*' }), express.json(), ...middlewares);
     this.registerRouters(controllers);
   }
 
