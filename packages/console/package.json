@@ -1,6 +1,6 @@
 {
   "name": "@observerx/console",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "Your AI mate.",
   "main": "dist/index.js",
   "type": "module",
@@ -26,9 +26,9 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
-    "dotenv": "^16.3.1",
+    "@observerx/core": "workspace:*",
     "@observerx/database": "workspace:*",
-    "@observerx/core": "workspace:*"
+    "chalk": "^5.3.0",
+    "dotenv": "^16.3.1"
   }
 }

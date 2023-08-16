@@ -1,6 +1,6 @@
 {
   "name": "@observerx/core",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "Your AI mate.",
   "main": "dist/index.js",
   "type": "module",
@@ -26,6 +26,7 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@observerx/database": "workspace:*",
     "chalk": "^5.3.0",
     "class-transformer": "^0.5.1",
     "dotenv": "^16.3.1",
@@ -33,7 +34,6 @@
     "openai": "4.0.0-beta.6",
     "pg": "^8.11.1",
     "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.3.17",
-    "@observerx/database": "workspace:*"
+    "typeorm": "^0.3.17"
   }
 }
