@@ -7,3 +7,9 @@ ObserverX admin panel backend server.
 ```bash
 $ npm install @observerx/panel-server
 ```
+
+## Usage
+
+```bash
+$ observerx-admin start
+```

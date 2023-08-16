@@ -8,7 +8,6 @@ import { serverUrl } from '~/config';
 import {
   Accordion,
   Badge,
-  Code,
   Container,
   createStyles,
   Divider,
@@ -61,6 +60,9 @@ export const meta: V2_MetaFunction = () => {
     {
       name: 'viewport',
       content: 'width=device-width, initial-scale=1',
+    },
+    {
+      charSet: 'utf-8',
     },
   ];
 };

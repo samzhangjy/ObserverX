@@ -2,8 +2,8 @@ import type { V2_MetaFunction } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import Shell from '~/components/Shell';
 import isLoggedIn from '~/utils/login';
-import { useLoaderData, useNavigate } from '@remix-run/react';
-import { useEffect, useState } from 'react';
+import { useLoaderData, useLocation, useNavigate } from '@remix-run/react';
+import { useEffect, useRef, useState } from 'react';
 import { serverUrl } from '~/config';
 import getAuth from '~/utils/auth';
 import {
@@ -52,7 +52,6 @@ const useStyles = createStyles((theme) => ({
 
   title: {
     fontWeight: 700,
-    textTransform: 'uppercase',
   },
 }));
 
@@ -63,6 +62,9 @@ export const meta: V2_MetaFunction = () => {
     {
       name: 'viewport',
       content: 'width=device-width, initial-scale=1',
+    },
+    {
+      charSet: 'utf-8',
     },
   ];
 };
@@ -78,8 +80,15 @@ export default function Index() {
   const { serverUrl } = useLoaderData<typeof loader>();
   const [status, setStatus] = useState<any>({});
   const [env, setEnv] = useState<Record<string, any>>({});
+  const [billing, setBilling] = useState({
+    usage: 0,
+    total: 0,
+  });
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const location = useLocation();
+  const statusIntervalId = useRef<number>();
+
   const getStatus = async () => {
     const status = await fetch(`${serverUrl}/system/status`, {
       headers: {
@@ -97,6 +106,19 @@ export default function Index() {
     const vars = (await env.json()).env;
     setEnv(vars);
     setModelsValues(vars);
+  };
+
+  const getBilling = async () => {
+    const response = await fetch(`${serverUrl}/billing`, {
+      headers: {
+        Authorization: getAuth(),
+      },
+    });
+    const data = await response.json();
+    setBilling({
+      usage: data.usage,
+      total: data.total,
+    });
   };
 
   const setServerEnv = async (key: string, value: string) => {
@@ -122,11 +144,19 @@ export default function Index() {
         navigate('/login');
       }
     };
-    getStatus();
-    getEnv();
-    setInterval(getStatus, 1000);
-    checker();
+    checker().then(() => {
+      getStatus();
+      getEnv();
+      getBilling();
+      statusIntervalId.current = window.setInterval(getStatus, 1000);
+    });
   }, []);
+
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      window.clearInterval(statusIntervalId.current);
+    }
+  }, [location]);
 
   const { classes } = useStyles();
   const [modelsOpened, setModelsOpened] = useState<Record<string, boolean>>({});
@@ -142,7 +172,9 @@ export default function Index() {
           size={80}
           roundCaps
           thickness={8}
-          sections={[{ value: progress, color: 'blue' }]}
+          sections={[
+            { value: progress, color: progress < 60 ? 'blue' : progress < 80 ? 'yellow' : 'red' },
+          ]}
           label={<Center>{progress}%</Center>}
         />
       </Group>
@@ -159,7 +191,7 @@ export default function Index() {
         <Title>服务器</Title>
         <Divider mt={10} mb={30} />
         <SimpleGrid
-          cols={3}
+          cols={2}
           breakpoints={[
             { maxWidth: 'md', cols: 2 },
             { maxWidth: 'xs', cols: 1 },
@@ -180,6 +212,11 @@ export default function Index() {
             title={`SSD - ${status?.drive?.total ?? '0 GB'}`}
             progress={Math.round(status?.drive?.usage ?? 0)}
             text={`已用 ${status?.drive?.used}`}
+          />
+          <Stat
+            title={`OpenAI API - $${billing.total ?? '0.00'}`}
+            progress={Math.round(billing.total ? (billing.usage / billing.total) * 100 : 0)}
+            text={`已用 $${billing.usage.toFixed(2)}`}
           />
         </SimpleGrid>
         <Title order={2} my={30}>
