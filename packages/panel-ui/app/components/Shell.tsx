@@ -1,5 +1,15 @@
-import { ReactNode, useState } from 'react';
-import { AppShell, Burger, Footer, Header, MediaQuery, Text, Title, useMantineTheme } from '@mantine/core';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
+import {
+  AppShell,
+  Burger,
+  Footer,
+  Header,
+  MediaQuery,
+  Text,
+  Title,
+  useMantineTheme,
+} from '@mantine/core';
 import { Navbar } from './Navbar';
 import { useMediaQuery } from '@mantine/hooks';
 
@@ -15,27 +25,30 @@ export default function Shell({ children }: { children: ReactNode }) {
           background: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.colors.gray[0],
         },
       }}
-      navbarOffsetBreakpoint='sm'
-      asideOffsetBreakpoint='sm'
-      navbar={
-        <Navbar hiddenBreakpoint='sm' hidden={!opened} />
-      }
+      navbarOffsetBreakpoint="sm"
+      asideOffsetBreakpoint="sm"
+      navbar={<Navbar hiddenBreakpoint="sm" hidden={!opened} />}
       footer={
-        !opened ?
-          <Footer height={60} p='md'>
-            <Text size='sm' color='dimmed'>Copyright &copy; {new Date().getFullYear()} Sam Zhang.</Text>
-          </Footer> : <></>
+        !opened ? (
+          <Footer height={60} p="md">
+            <Text size="sm" color="dimmed">
+              Copyright &copy; {new Date().getFullYear()} Sam Zhang.
+            </Text>
+          </Footer>
+        ) : (
+          <></>
+        )
       }
       header={
-        <MediaQuery largerThan='sm' styles={{ display: 'none' }}>
-          <Header height={{ base: 50, md: 70 }} p='md'>
+        <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
+          <Header height={{ base: 50, md: 70 }} p="md">
             <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
               <Burger
                 opened={opened}
                 onClick={() => setOpened((o) => !o)}
-                size='sm'
+                size="sm"
                 color={theme.colors.gray[6]}
-                mr='xl'
+                mr="xl"
               />
               <Title order={5}>ObserverX</Title>
             </div>

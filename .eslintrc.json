@@ -13,7 +13,8 @@
     "ecmaVersion": "latest",
     "sourceType": "module",
     "project": [
-      "packages/**/tsconfig.json"
+      "./tsconfig.json",
+      "packages/*/tsconfig.json"
     ]
   },
   "plugins": [
@@ -27,5 +28,6 @@
     "no-restricted-syntax": "off",
     "class-methods-use-this": "off",
     "no-nested-ternary": "off"
-  }
+  },
+  "root": true
 }

@@ -10,6 +10,7 @@ import {
   ActionIcon,
   Button,
   Center,
+  Container,
   createStyles,
   Divider,
   Group,
@@ -17,13 +18,16 @@ import {
   Paper,
   rem,
   RingProgress,
+  ScrollArea,
   SimpleGrid,
   Table,
   Text,
   TextInput,
   Title,
+  useMantineTheme,
 } from '@mantine/core';
-import { IconCoin, IconDiscount2, IconEdit, IconReceipt2, IconUserPlus } from '@tabler/icons-react';
+import { IconEdit } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 
 const useStyles = createStyles((theme) => ({
   root: {
@@ -52,13 +56,6 @@ const useStyles = createStyles((theme) => ({
   },
 }));
 
-const icons = {
-  user: IconUserPlus,
-  discount: IconDiscount2,
-  receipt: IconReceipt2,
-  coin: IconCoin,
-};
-
 export const meta: V2_MetaFunction = () => {
   return [
     { title: 'ObserverX' },
@@ -81,6 +78,8 @@ export default function Index() {
   const { serverUrl } = useLoaderData<typeof loader>();
   const [status, setStatus] = useState<any>({});
   const [env, setEnv] = useState<Record<string, any>>({});
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const getStatus = async () => {
     const status = await fetch(`${serverUrl}/system/status`, {
       headers: {
@@ -133,10 +132,10 @@ export default function Index() {
   const [modelsOpened, setModelsOpened] = useState<Record<string, boolean>>({});
   const [modelsValues, setModelsValues] = useState<Record<string, string>>({});
 
-  const Stat = ({ title, progress, text }: { title: string, progress: number, text: string }) => (
-    <Paper withBorder p='md' radius='md' key={title}>
-      <Group position='apart'>
-        <Text size='xs' color='dimmed' className={classes.title}>
+  const Stat = ({ title, progress, text }: { title: string; progress: number; text: string }) => (
+    <Paper withBorder p="md" radius="md" key={title}>
+      <Group position="apart">
+        <Text size="xs" color="dimmed" className={classes.title}>
           {title}
         </Text>
         <RingProgress
@@ -144,15 +143,11 @@ export default function Index() {
           roundCaps
           thickness={8}
           sections={[{ value: progress, color: 'blue' }]}
-          label={
-            <Center>
-              {progress}%
-            </Center>
-          }
+          label={<Center>{progress}%</Center>}
         />
       </Group>
 
-      <Group align='flex-end' spacing='xs' mt={10}>
+      <Group align="flex-end" spacing="xs" mt={10}>
         <Text className={classes.value}>{text}</Text>
       </Group>
     </Paper>
@@ -160,53 +155,88 @@ export default function Index() {
 
   return (
     <Shell>
-      <Title>服务器</Title>
-      <Divider mt={10} mb={30} />
-      <SimpleGrid
-        cols={3}
-        breakpoints={[
-          { maxWidth: 'md', cols: 2 },
-          { maxWidth: 'xs', cols: 1 },
-        ]}
-        spacing={10}
-      >
-        <Stat title={`CPU - ${status?.cpu?.count ?? 0} 核`} progress={Math.round(status?.cpu?.usage ?? 0)}
-              text={status?.cpu?.model} />
-        <Stat title={`RAM - ${status?.mem?.total ?? '0 GiB'}`} progress={Math.round(status?.mem?.usage ?? 0)}
-              text={`已用 ${status?.mem?.used}`} />
-        <Stat title={`SSD - ${status?.drive?.total ?? '0 GB'}`} progress={Math.round(status?.drive?.usage ?? 0)}
-              text={`已用 ${status?.drive?.used}`} />
-      </SimpleGrid>
-      <Title order={2} my={30}>环境变量</Title>
-      <Table maw='100%'>
-        <thead>
-        <tr>
-          <th>名称</th>
-          <th>值</th>
-          <th>操作</th>
-        </tr>
-        </thead>
-        <tbody>
-        {Object.entries(env).map(([key, value]: [string, string]) => (
-          <tr key={key}>
-            <td>{key}</td>
-            <td>{value.length > 100 ? value.substring(0, 100) + '...' : value}</td>
-            <td><ActionIcon variant='light' onClick={() => setModelsOpened({ ...modelsOpened, [key]: true })}>
-              <IconEdit size={16} />
-            </ActionIcon></td>
-            <Modal opened={modelsOpened[key]} onClose={() => setModelsOpened({ ...modelsOpened, [key]: false })}
-                   title='修改变量'>
-              <TextInput label='值' value={modelsValues[key]}
-                         onChange={(e) => setModelsValues({ ...modelsValues, [key]: e.currentTarget.value })} />
-              <Button onClick={() => {
-                setServerEnv(key, modelsValues[key]);
-                setModelsOpened({ ...modelsOpened, [key]: false });
-              }} mt={10}>修改</Button>
-            </Modal>
-          </tr>
-        ))}
-        </tbody>
-      </Table>
+      <Container>
+        <Title>服务器</Title>
+        <Divider mt={10} mb={30} />
+        <SimpleGrid
+          cols={3}
+          breakpoints={[
+            { maxWidth: 'md', cols: 2 },
+            { maxWidth: 'xs', cols: 1 },
+          ]}
+          spacing={10}
+        >
+          <Stat
+            title={`CPU - ${status?.cpu?.count ?? 0} 核`}
+            progress={Math.round(status?.cpu?.usage ?? 0)}
+            text={status?.cpu?.model}
+          />
+          <Stat
+            title={`RAM - ${status?.mem?.total ?? '0 GiB'}`}
+            progress={Math.round(status?.mem?.usage ?? 0)}
+            text={`已用 ${status?.mem?.used}`}
+          />
+          <Stat
+            title={`SSD - ${status?.drive?.total ?? '0 GB'}`}
+            progress={Math.round(status?.drive?.usage ?? 0)}
+            text={`已用 ${status?.drive?.used}`}
+          />
+        </SimpleGrid>
+        <Title order={2} my={30}>
+          环境变量
+        </Title>
+        <Table maw="100%">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>值</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(env).map(([key, value]: [string, string]) => (
+              <tr key={key}>
+                <td>
+                  <ScrollArea maw={isMobile ? 100 : 200}>{key}</ScrollArea>
+                </td>
+                <td>
+                  <ScrollArea maw={isMobile ? 130 : 200}>{value}</ScrollArea>
+                </td>
+                <td>
+                  <ActionIcon
+                    variant="light"
+                    onClick={() => setModelsOpened({ ...modelsOpened, [key]: true })}
+                  >
+                    <IconEdit size={16} />
+                  </ActionIcon>
+                </td>
+                <Modal
+                  opened={modelsOpened[key]}
+                  onClose={() => setModelsOpened({ ...modelsOpened, [key]: false })}
+                  title="修改变量"
+                >
+                  <TextInput
+                    label="值"
+                    value={modelsValues[key]}
+                    onChange={(e) =>
+                      setModelsValues({ ...modelsValues, [key]: e.currentTarget.value })
+                    }
+                  />
+                  <Button
+                    onClick={() => {
+                      setServerEnv(key, modelsValues[key]);
+                      setModelsOpened({ ...modelsOpened, [key]: false });
+                    }}
+                    mt={10}
+                  >
+                    修改
+                  </Button>
+                </Modal>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Container>
     </Shell>
   );
 }
