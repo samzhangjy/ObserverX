@@ -15,3 +15,5 @@ packages/qq/go-cqhttp
 packages/qq/config.yml
 packages/qq/device.json
 packages/qq/session.token
+
+packages/panel-ui/api
