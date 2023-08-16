@@ -8,6 +8,7 @@ import { serverUrl } from '~/config';
 import getAuth from '~/utils/auth';
 import {
   ActionIcon,
+  Badge,
   Button,
   Center,
   Container,
@@ -88,6 +89,7 @@ export default function Index() {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const location = useLocation();
   const statusIntervalId = useRef<number>();
+  const [serverStatus, setServerStatus] = useState<'loading' | 'online' | 'offline'>('loading');
 
   const getStatus = async () => {
     const status = await fetch(`${serverUrl}/system/status`, {
@@ -144,12 +146,17 @@ export default function Index() {
         navigate('/login');
       }
     };
-    checker().then(() => {
-      getStatus();
-      getEnv();
-      getBilling();
-      statusIntervalId.current = window.setInterval(getStatus, 1000);
-    });
+    checker()
+      .then(() => {
+        setServerStatus('online');
+        getStatus();
+        getEnv();
+        getBilling();
+        statusIntervalId.current = window.setInterval(getStatus, 1000);
+      })
+      .catch(() => {
+        setServerStatus('offline');
+      });
   }, []);
 
   useEffect(() => {
@@ -188,7 +195,18 @@ export default function Index() {
   return (
     <Shell>
       <Container>
-        <Title>服务器</Title>
+        <Group position="apart" mb={20}>
+          <Title>服务器</Title>
+          <Badge
+            size="lg"
+            variant="dot"
+            color={
+              serverStatus === 'loading' ? 'blue' : serverStatus === 'online' ? 'green' : 'red'
+            }
+          >
+            {serverStatus === 'loading' ? '加载中' : serverStatus === 'online' ? '在线' : '离线'}
+          </Badge>
+        </Group>
         <Divider mt={10} mb={30} />
         <SimpleGrid
           cols={2}
