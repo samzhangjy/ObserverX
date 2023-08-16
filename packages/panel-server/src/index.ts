@@ -4,14 +4,13 @@ import ObserverX from '@observerx/core';
 import PlatformQQ from '@observerx/qq';
 import { Application } from '@observerx/server-util';
 import expressBasicAuth from 'express-basic-auth';
-import cors from 'cors';
 import platforms from './platforms.js';
 import controllers from './controllers/index.js';
 
 class PanelServer {
   private readonly dataSource: DataSource;
 
-  private readonly httpServer: Application;
+  private readonly server: Application;
 
   constructor() {
     addEntities(...ObserverX.getDatabaseEntities(), ...PlatformQQ.getDatabaseEntities());
@@ -23,7 +22,7 @@ class PanelServer {
       }
     });
 
-    this.httpServer = new Application(controllers, [
+    this.server = new Application(controllers, [
       expressBasicAuth({
         users: {
           [process.env.PANEL_ADMIN_USERNAME ?? 'admin']:
@@ -38,19 +37,18 @@ class PanelServer {
   }
 
   public start() {
-    this.httpServer.start(
-      parseInt(process.env.PANEL_PORT ?? '3000', 10),
-      process.env.PANEL_HOST ?? 'localhost',
-    );
+    this.server.start({
+      port: parseInt(process.env.PANEL_PORT ?? '3000', 10),
+      hostname: process.env.PANEL_HOST ?? 'localhost',
+      useHttps: !!process.env.USE_HTTPS,
+      privateKey: process.env.PANEL_HTTPS_PRIVATE_KEY ?? undefined,
+      certificate: process.env.PANEL_HTTPS_CERTIFICATE ?? undefined,
+    });
   }
 
   public stop() {
-    this.httpServer.stop();
+    this.server.stop();
   }
 }
-
-const panel = new PanelServer();
-
-panel.start();
 
 export default PanelServer;

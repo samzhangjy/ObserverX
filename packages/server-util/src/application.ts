@@ -2,9 +2,18 @@ import 'reflect-metadata';
 
 import * as http from 'http';
 import express, { Application as ExApplication, Handler, RequestHandler } from 'express';
+import cors from 'cors';
+import * as https from 'https';
 import { IRouter } from './utils/handlers.js';
 import MetadataKeys from './utils/metadata.js';
-import cors from 'cors';
+
+export interface ApplicationStartParameters {
+  port?: number;
+  hostname?: string;
+  privateKey?: string;
+  certificate?: string;
+  useHttps?: boolean;
+}
 
 /**
  * Server application impl.
@@ -18,9 +27,9 @@ class Application {
     return this.expressInstance;
   }
 
-  constructor(controllers: any[], middlewares: RequestHandler[]) {
+  constructor(controllers: any[], middlewares?: RequestHandler[]) {
     this.expressInstance = express();
-    this.expressInstance.use(cors({ origin: '*' }), express.json(), ...middlewares);
+    this.expressInstance.use(cors({ origin: '*' }), express.json(), ...(middlewares ?? []));
     this.registerRouters(controllers);
   }
 
@@ -41,8 +50,22 @@ class Application {
     });
   }
 
-  public start(port: number = 3000, hostname: string = 'localhost') {
-    const server = http.createServer(this.expressInstance);
+  public start({
+    port = 3000,
+    hostname = 'localhost',
+    useHttps = false,
+    privateKey,
+    certificate,
+  }: ApplicationStartParameters) {
+    const server = useHttps
+      ? https.createServer(
+          {
+            key: privateKey,
+            cert: certificate,
+          },
+          this.expressInstance,
+        )
+      : http.createServer(this.expressInstance);
     this.nodeServerInstance = server.listen(port, hostname, () => {
       console.log(`Server is listening on ${hostname}:${port}`);
     });

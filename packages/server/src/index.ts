@@ -28,10 +28,13 @@ class PlatformHttpServer extends Platform {
   }
 
   public start() {
-    this.application.start(
-      parseInt(process.env.SERVER_PORT ?? '3000', 10),
-      process.env.SERVER_HOST ?? 'localhost',
-    );
+    this.application.start({
+      port: parseInt(process.env.SERVER_PORT ?? '3000', 10),
+      hostname: process.env.SERVER_HOST ?? 'localhost',
+      useHttps: !!process.env.USE_HTTPS,
+      privateKey: process.env.SERVER_HTTPS_PRIVATE_KEY ?? undefined,
+      certificate: process.env.SERVER_HTTPS_CERTIFICATE ?? undefined,
+    });
   }
 
   public stop() {
