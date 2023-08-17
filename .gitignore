@@ -17,3 +17,5 @@ packages/qq/device.json
 packages/qq/session.token
 
 packages/panel-ui/api
+
+lerna-debug.log
