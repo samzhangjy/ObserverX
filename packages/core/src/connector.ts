@@ -22,7 +22,9 @@ import ChatCompletion = Chat.ChatCompletion;
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export type BotPrompt = 'default' | 'private' | 'group';
+export const builtinPrompts = ['default', 'qq-group', 'qq-private'] as const;
+
+export type BotPrompt = (typeof builtinPrompts)[number] | (string & {});
 
 /**
  * Chat result for each turn.
@@ -109,7 +111,7 @@ class ObserverX {
 
   private readonly MAX_CONTIGUOUS_FUNCTION_CALLS = 8;
 
-  private readonly prompt: BotPrompt = 'default';
+  private prompt: BotPrompt = 'default';
 
   private readonly dataSource: DataSource;
 
@@ -401,12 +403,13 @@ class ObserverX {
    * @private
    */
   private loadPrompt() {
+    if (!builtinPrompts.includes(this.prompt as any)) return;
     const promptPath = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
       `../prompts/${this.prompt}.md`,
     );
     if (!fs.existsSync(promptPath)) return;
-    this.currentPrompt = fs.readFileSync(promptPath, { encoding: 'utf-8' });
+    this.prompt = fs.readFileSync(promptPath, { encoding: 'utf-8' });
   }
 
   /**
@@ -416,7 +419,7 @@ class ObserverX {
   private getChatCompletionRequest(): CreateChatCompletionRequestStreaming.Message[] {
     const systemPrompt = {
       role: MessageRole.SYSTEM,
-      content: this.currentPrompt,
+      content: this.prompt,
       id: 0,
     };
 

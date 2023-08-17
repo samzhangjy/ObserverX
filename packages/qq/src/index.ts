@@ -21,6 +21,9 @@ class PlatformQQ implements Platform {
     'set_model',
     'get_contacts',
     'set_contact_enabled',
+    'set_contact_prompt',
+    'set_contact_reply_interval',
+    'get_contact',
   ] as const;
 
   private readonly botMap: Map<string, ObserverX> = new Map();
@@ -115,7 +118,11 @@ class PlatformQQ implements Platform {
       this.botMap.set(
         parentId,
         new ObserverX({
-          prompt: isPrivate ? 'private' : 'group',
+          prompt: !currentContact.prompt
+            ? isPrivate
+              ? 'qq-private'
+              : 'qq-group'
+            : currentContact.prompt,
           model: (currentContact.model as BotModel) ?? 'GPT-3.5',
           parentId,
           dataSource: this.dataSource,
@@ -124,7 +131,7 @@ class PlatformQQ implements Platform {
       setInterval(() => {
         console.log(chalk.gray('Checking for new messages...'));
         this.getResponse(parentId, isPrivate, isPrivate ? senderId : groupId);
-      }, 10000);
+      }, currentContact.replyInterval);
     }
     const bot = this.botMap.get(parentId);
 
@@ -137,19 +144,26 @@ class PlatformQQ implements Platform {
   }
 
   public invokePlatformAction(actionName: (typeof this.platformActions)[number], ...args): any {
-    if (actionName === 'get_model') {
-      return this.getBotModel(...(args as Parameters<typeof this.getBotModel>));
+    switch (actionName) {
+      case 'get_model':
+        return this.getBotModel(...(args as Parameters<typeof this.getBotModel>));
+      case 'set_model':
+        return this.setBotModel(...(args as Parameters<typeof this.setBotModel>));
+      case 'get_contacts':
+        return this.getContacts();
+      case 'set_contact_enabled':
+        return this.setContactEnabled(...(args as Parameters<typeof this.setContactEnabled>));
+      case 'set_contact_prompt':
+        return this.setContactPrompt(...(args as Parameters<typeof this.setContactPrompt>));
+      case 'set_contact_reply_interval':
+        return this.setContactReplyInterval(
+          ...(args as Parameters<typeof this.setContactReplyInterval>),
+        );
+      case 'get_contact':
+        return this.getContact(...(args as Parameters<typeof this.getContact>));
+      default:
+        return null;
     }
-    if (actionName === 'set_model') {
-      return this.setBotModel(...(args as Parameters<typeof this.setBotModel>));
-    }
-    if (actionName === 'get_contacts') {
-      return this.getContacts();
-    }
-    if (actionName === 'set_contact_enabled') {
-      return this.setContactEnabled(...(args as Parameters<typeof this.setContactEnabled>));
-    }
-    return null;
   }
 
   private logSegment(segment: string | ChatResult) {
@@ -200,9 +214,25 @@ class PlatformQQ implements Platform {
     return this.contactRepository.find();
   }
 
+  private async getContact(parentId: string) {
+    return this.contactRepository.findOneBy({ parentId });
+  }
+
   private async setContactEnabled(parentId: string, enabled: boolean) {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.enabled = enabled;
+    await this.contactRepository.save(currentContact);
+  }
+
+  private async setContactPrompt(parentId: string, prompt: string) {
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    currentContact.prompt = prompt;
+    await this.contactRepository.save(currentContact);
+  }
+
+  private async setContactReplyInterval(parentId: string, replyInterval: number) {
+    const currentContact = await this.contactRepository.findOneBy({ parentId });
+    currentContact.replyInterval = replyInterval;
     await this.contactRepository.save(currentContact);
   }
 }

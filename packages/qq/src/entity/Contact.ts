@@ -21,6 +21,12 @@ class Contact {
 
   @Column({ default: true })
   public enabled!: boolean;
+
+  @Column({ nullable: true })
+  public prompt?: string;
+
+  @Column({ default: 10000 })
+  public replyInterval!: number;
 }
 
 export default Contact;

@@ -11,10 +11,12 @@ import {
   Container,
   createStyles,
   Divider,
+  NumberInput,
   rem,
   Select,
   Switch,
   Text,
+  Textarea,
   Title,
 } from '@mantine/core';
 import getAuth from '~/utils/auth';
@@ -79,6 +81,8 @@ export interface Contact {
   type: 'SINGLE_USER_DIRECT_MESSAGE' | 'GROUP_MESSAGE';
   model: string;
   enabled: boolean;
+  prompt: string;
+  replyInterval: number;
 }
 
 export default function Qq() {
@@ -87,6 +91,8 @@ export default function Qq() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactModels, setContactModels] = useState<Record<string, string>>({});
   const [contactEnabled, setContactEnabled] = useState<Record<string, boolean>>({});
+  const [contactReplyInterval, setContactReplyInterval] = useState<Record<string, number>>({});
+  const [contactPrompt, setContactPrompt] = useState<Record<string, string>>({});
 
   const getContacts = async () => {
     const response = await fetch(`${serverUrl}/platforms/qq/contacts`, {
@@ -97,15 +103,19 @@ export default function Qq() {
     const data = await response.json();
     setContacts(data.contacts);
     const models: Record<string, string> = {};
+    const enabled: Record<string, boolean> = {};
+    const prompt: Record<string, string> = {};
+    const replyInterval: Record<string, number> = {};
     data.contacts.forEach((contact: Contact) => {
       models[contact.parentId] = contact.model;
+      enabled[contact.parentId] = contact.enabled;
+      prompt[contact.parentId] = contact.prompt;
+      replyInterval[contact.parentId] = contact.replyInterval;
     });
     setContactModels(models);
-    const enabled: Record<string, boolean> = {};
-    data.contacts.forEach((contact: Contact) => {
-      enabled[contact.parentId] = contact.enabled;
-    });
     setContactEnabled(enabled);
+    setContactPrompt(prompt);
+    setContactReplyInterval(replyInterval);
   };
 
   const setModel = async (parentId: string, model: string) => {
@@ -140,6 +150,40 @@ export default function Qq() {
       return;
     }
     setContactEnabled({ ...contactEnabled, [parentId]: enabled });
+  };
+
+  const setReplyInterval = async (parentId: string, replyInterval: number) => {
+    const response = await fetch(`${serverUrl}/platforms/qq/contacts/${parentId}/reply-interval`, {
+      method: 'POST',
+      headers: {
+        Authorization: getAuth(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        replyInterval,
+      }),
+    });
+    if (response.status !== 200) {
+      return;
+    }
+    setContactReplyInterval({ ...contactReplyInterval, [parentId]: replyInterval });
+  };
+
+  const setPrompt = async (parentId: string, prompt: string) => {
+    const response = await fetch(`${serverUrl}/platforms/qq/contacts/${parentId}/prompt`, {
+      method: 'POST',
+      headers: {
+        Authorization: getAuth(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+      }),
+    });
+    if (response.status !== 200) {
+      return;
+    }
+    setContactPrompt({ ...contactPrompt, [parentId]: prompt });
   };
 
   useEffect(() => {
@@ -183,6 +227,33 @@ export default function Qq() {
                     setContactModels({ ...contactModels, [contact.parentId]: value as any });
                     setModel(contact.parentId, value as string);
                   }}
+                  mb={20}
+                />
+                <Textarea
+                  label="提示语"
+                  placeholder="留空即为使用默认提示语"
+                  value={contactPrompt[contact.parentId]}
+                  onChange={(e) => {
+                    setContactPrompt({
+                      ...contactPrompt,
+                      [contact.parentId]: e.currentTarget.value,
+                    });
+                    setPrompt(contact.parentId, e.currentTarget.value);
+                  }}
+                  mb={20}
+                />
+                <NumberInput
+                  label="回复间隔"
+                  description="ObserverX 将以此时间间隔（ms）检查新消息并向该联系人发送消息。"
+                  value={contactReplyInterval[contact.parentId]}
+                  onChange={(value) => {
+                    setContactReplyInterval({
+                      ...contactReplyInterval,
+                      [contact.parentId]: value || 10000,
+                    });
+                    setReplyInterval(contact.parentId, value || 10000);
+                  }}
+                  min={1000}
                   mb={20}
                 />
                 <Switch

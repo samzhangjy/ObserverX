@@ -61,6 +61,62 @@ class PlatformQQController {
     }
   }
 
+  @Post('/contacts/:parentId/prompt')
+  public async setPrompt(req: Request, res: Response) {
+    try {
+      const qq = platforms.get('qq') as PlatformQQ;
+      const { parentId } = req.params;
+      const { prompt } = req.body;
+      await qq.invokePlatformAction('set_contact_prompt', parentId, prompt);
+      res.json({ status: 'success' });
+    } catch (e) {
+      res.json({
+        message: e.toString(),
+        status: 'error',
+      });
+    }
+  }
+
+  @Post('/contacts/:parentId/reply-interval')
+  public async setReplyInterval(req: Request, res: Response) {
+    try {
+      const qq = platforms.get('qq') as PlatformQQ;
+      const { parentId } = req.params;
+      const { replyInterval } = req.body;
+      if (!replyInterval) {
+        res.json({
+          message: 'Reply interval is required.',
+          status: 'error',
+        });
+        return;
+      }
+      await qq.invokePlatformAction('set_contact_reply_interval', parentId, replyInterval);
+      res.json({ status: 'success' });
+    } catch (e) {
+      res.json({
+        message: e.toString(),
+        status: 'error',
+      });
+    }
+  }
+
+  @Get('/contacts/:parentId')
+  public async getContact(req: Request, res: Response) {
+    try {
+      const qq = platforms.get('qq') as PlatformQQ;
+      const { parentId } = req.params;
+      res.json({
+        contact: await qq.invokePlatformAction('get_contact', parentId),
+        status: 'success',
+      });
+    } catch (e) {
+      res.json({
+        message: e.toString(),
+        status: 'error',
+      });
+    }
+  }
+
   @Post('/contacts/:parentId/enabled')
   public async setContactEnabled(req: Request, res: Response) {
     try {
