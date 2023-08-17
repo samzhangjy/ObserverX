@@ -238,7 +238,9 @@ export default function Qq() {
                       ...contactPrompt,
                       [contact.parentId]: e.currentTarget.value,
                     });
-                    setPrompt(contact.parentId, e.currentTarget.value);
+                  }}
+                  onBlur={() => {
+                    setPrompt(contact.parentId, contactPrompt[contact.parentId]);
                   }}
                   mb={20}
                 />
@@ -251,9 +253,13 @@ export default function Qq() {
                       ...contactReplyInterval,
                       [contact.parentId]: value || 10000,
                     });
-                    setReplyInterval(contact.parentId, value || 10000);
+                  }}
+                  onBlur={() => {
+                    setReplyInterval(contact.parentId, contactReplyInterval[contact.parentId]);
                   }}
                   min={1000}
+                  stepHoldDelay={500}
+                  stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
                   mb={20}
                 />
                 <Switch

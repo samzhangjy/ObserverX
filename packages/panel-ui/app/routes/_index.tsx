@@ -87,7 +87,6 @@ export default function Index() {
   });
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const location = useLocation();
   const statusIntervalId = useRef<number>();
   const [serverStatus, setServerStatus] = useState<'loading' | 'online' | 'offline'>('loading');
 
@@ -157,13 +156,8 @@ export default function Index() {
       .catch(() => {
         setServerStatus('offline');
       });
+    return () => clearInterval(statusIntervalId.current);
   }, []);
-
-  useEffect(() => {
-    if (location.pathname !== '/') {
-      window.clearInterval(statusIntervalId.current);
-    }
-  }, [location]);
 
   const { classes } = useStyles();
   const [modelsOpened, setModelsOpened] = useState<Record<string, boolean>>({});
