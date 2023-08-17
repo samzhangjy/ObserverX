@@ -1,1 +1,5 @@
 .env
+config.yml
+device.json
+go-cqhttp
+session.token
