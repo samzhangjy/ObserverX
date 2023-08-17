@@ -57,8 +57,12 @@ export default function Login(props: PaperProps) {
       });
       return;
     }
-    Cookies.set('username', form.values.username);
-    Cookies.set('password', form.values.password);
+    Cookies.set('username', form.values.username, {
+      expires: 365,
+    });
+    Cookies.set('password', form.values.password, {
+      expires: 365,
+    });
     notifications.show({
       message: '欢迎回来',
       color: 'green',
