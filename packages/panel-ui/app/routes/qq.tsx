@@ -8,18 +8,22 @@ import { serverUrl } from '~/config';
 import {
   Accordion,
   Badge,
+  Button,
   Container,
   createStyles,
   Divider,
+  Group,
   NumberInput,
   rem,
   Select,
+  Skeleton, Space,
   Switch,
   Text,
   Textarea,
   Title,
 } from '@mantine/core';
 import getAuth from '~/utils/auth';
+import { IconRefresh } from '@tabler/icons-react';
 
 const useStyles = createStyles((theme) => ({
   root: {
@@ -88,11 +92,13 @@ export interface Contact {
 export default function Qq() {
   const navigate = useNavigate();
   const { serverUrl } = useLoaderData<typeof loader>();
+  const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactModels, setContactModels] = useState<Record<string, string>>({});
   const [contactEnabled, setContactEnabled] = useState<Record<string, boolean>>({});
   const [contactReplyInterval, setContactReplyInterval] = useState<Record<string, number>>({});
   const [contactPrompt, setContactPrompt] = useState<Record<string, string>>({});
+  const [restarting, setRestarting] = useState(false);
 
   const getContacts = async () => {
     const response = await fetch(`${serverUrl}/platforms/qq/contacts`, {
@@ -186,6 +192,17 @@ export default function Qq() {
     setContactPrompt({ ...contactPrompt, [parentId]: prompt });
   };
 
+  const restart = async () => {
+    setRestarting(true);
+    await fetch(`${serverUrl}/platforms/qq/restart`, {
+      method: 'POST',
+      headers: {
+        Authorization: getAuth(),
+      },
+    });
+    setRestarting(false);
+  };
+
   useEffect(() => {
     const checker = async () => {
       const loggedIn = await isLoggedIn(serverUrl);
@@ -193,8 +210,11 @@ export default function Qq() {
         navigate('/login');
       }
     };
-    checker();
-    getContacts();
+    checker().then(() => {
+      getContacts().then(() => {
+        setLoading(false);
+      });
+    });
   }, []);
 
   const { classes } = useStyles();
@@ -202,81 +222,95 @@ export default function Qq() {
   return (
     <Shell>
       <Container>
-        <Title>QQ 平台</Title>
+        <Group position="apart">
+          <Title>QQ 平台</Title>
+          <Button
+            leftIcon={<IconRefresh size="1rem" />}
+            onClick={restart}
+            loading={restarting}
+            variant="subtle"
+            size="sm"
+          >
+            重启服务
+          </Button>
+        </Group>
         <Divider mt={10} mb={30} />
         <Text mb={20}>共计 {contacts.length} 个联系配置。</Text>
-        <Accordion classNames={classes} className={classes.root} variant="filled">
-          {contacts.map((contact) => (
-            <Accordion.Item value={contact.parentId} key={contact.parentId}>
-              <Accordion.Control>
-                <Text>
-                  {contact.name}
-                  <Badge ml={10}>{contact.parentId}</Badge>
-                </Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Select
-                  label="模型"
-                  placeholder="请选择"
-                  data={[
-                    { value: 'GPT-3.5', label: 'GPT-3.5' },
-                    { value: 'GPT-4', label: 'GPT-4' },
-                  ]}
-                  value={contactModels[contact.parentId]}
-                  onChange={(value) => {
-                    setContactModels({ ...contactModels, [contact.parentId]: value as any });
-                    setModel(contact.parentId, value as string);
-                  }}
-                  mb={20}
-                />
-                <Textarea
-                  label="提示语"
-                  placeholder="留空即为使用默认提示语"
-                  value={contactPrompt[contact.parentId]}
-                  onChange={(e) => {
-                    setContactPrompt({
-                      ...contactPrompt,
-                      [contact.parentId]: e.currentTarget.value,
-                    });
-                  }}
-                  onBlur={() => {
-                    setPrompt(contact.parentId, contactPrompt[contact.parentId]);
-                  }}
-                  mb={20}
-                />
-                <NumberInput
-                  label="回复间隔"
-                  description="ObserverX 将以此时间间隔（ms）检查新消息并向该联系人发送消息。"
-                  value={contactReplyInterval[contact.parentId]}
-                  onChange={(value) => {
-                    setContactReplyInterval({
-                      ...contactReplyInterval,
-                      [contact.parentId]: value || 10000,
-                    });
-                  }}
-                  onBlur={() => {
-                    setReplyInterval(contact.parentId, contactReplyInterval[contact.parentId]);
-                  }}
-                  min={1000}
-                  stepHoldDelay={500}
-                  stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
-                  mb={20}
-                />
-                <Switch
-                  label={contactEnabled[contact.parentId] ? '已启用' : '已关闭'}
-                  checked={contactEnabled[contact.parentId]}
-                  onChange={(value) => {
-                    setContactEnabled({
-                      ...contactEnabled,
-                      [contact.parentId]: value.currentTarget.checked,
-                    });
-                    setEnabled(contact.parentId, value.currentTarget.checked);
-                  }}
-                />
-              </Accordion.Panel>
-            </Accordion.Item>
-          ))}
-        </Accordion>
+        <Skeleton visible={loading} height={200} radius="md">
+          <Accordion classNames={classes} className={classes.root} variant="filled">
+            {contacts.map((contact) => (
+              <Accordion.Item value={contact.parentId} key={contact.parentId}>
+                <Accordion.Control>
+                  <Text>
+                    {contact.name}
+                    <Badge ml={10}>{contact.parentId}</Badge>
+                  </Text>
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Select
+                    label="模型"
+                    placeholder="请选择"
+                    data={[
+                      { value: 'GPT-3.5', label: 'GPT-3.5' },
+                      { value: 'GPT-4', label: 'GPT-4' },
+                    ]}
+                    value={contactModels[contact.parentId]}
+                    onChange={(value) => {
+                      setContactModels({ ...contactModels, [contact.parentId]: value as any });
+                      setModel(contact.parentId, value as string);
+                    }}
+                    mb={20}
+                  />
+                  <Textarea
+                    label="提示语"
+                    placeholder="留空即为使用默认提示语"
+                    value={contactPrompt[contact.parentId]}
+                    onChange={(e) => {
+                      setContactPrompt({
+                        ...contactPrompt,
+                        [contact.parentId]: e.currentTarget.value,
+                      });
+                    }}
+                    onBlur={() => {
+                      setPrompt(contact.parentId, contactPrompt[contact.parentId]);
+                    }}
+                    mb={20}
+                  />
+                  <NumberInput
+                    label="回复间隔"
+                    description="ObserverX 将以此时间间隔（ms）检查新消息并向该联系人发送消息。"
+                    value={contactReplyInterval[contact.parentId]}
+                    onChange={(value) => {
+                      setContactReplyInterval({
+                        ...contactReplyInterval,
+                        [contact.parentId]: value || 10000,
+                      });
+                    }}
+                    onBlur={() => {
+                      setReplyInterval(contact.parentId, contactReplyInterval[contact.parentId]);
+                    }}
+                    min={1000}
+                    stepHoldDelay={500}
+                    stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
+                    mb={20}
+                  />
+                  <Switch
+                    label={contactEnabled[contact.parentId] ? '已启用' : '已关闭'}
+                    checked={contactEnabled[contact.parentId]}
+                    onChange={(value) => {
+                      setContactEnabled({
+                        ...contactEnabled,
+                        [contact.parentId]: value.currentTarget.checked,
+                      });
+                      setEnabled(contact.parentId, value.currentTarget.checked);
+                    }}
+                  />
+                </Accordion.Panel>
+              </Accordion.Item>
+            ))}
+          </Accordion>
+        </Skeleton>
+        <Space h={600} w="100%" />
       </Container>
     </Shell>
   );

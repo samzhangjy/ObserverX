@@ -111,7 +111,7 @@ class ObserverX {
 
   private readonly MAX_CONTIGUOUS_FUNCTION_CALLS = 8;
 
-  private prompt: BotPrompt = 'default';
+  public prompt: BotPrompt = 'default';
 
   private readonly dataSource: DataSource;
 

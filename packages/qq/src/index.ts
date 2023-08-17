@@ -228,6 +228,9 @@ class PlatformQQ implements Platform {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.prompt = prompt;
     await this.contactRepository.save(currentContact);
+    if (this.botMap.has(parentId)) {
+      this.botMap.get(parentId).prompt = prompt;
+    }
   }
 
   private async setContactReplyInterval(parentId: string, replyInterval: number) {
