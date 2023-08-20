@@ -1,3 +1,5 @@
+![banner](../../assets/plugin-user-info.jpg)
+
 # `@observerx/plugin-user-info`
 
 User info plugin for ObserverX.

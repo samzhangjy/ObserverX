@@ -1,3 +1,5 @@
+![banner](../../assets/action-history.jpg)
+
 # `@observerx/action-history`
 
 History action for ObserverX.

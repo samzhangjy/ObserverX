@@ -1,3 +1,5 @@
+![banner](../../assets/panel-server.jpg)
+
 # `@observerx/panel-server`
 
 ObserverX admin panel backend server.

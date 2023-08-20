@@ -1,3 +1,5 @@
+![banner](../../assets/action-node.jpg)
+
 # `@observerx/action-node`
 
 Node runner action for ObserverX.

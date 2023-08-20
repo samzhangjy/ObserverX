@@ -1,3 +1,5 @@
+![banner](../../assets/platform-qq.jpg)
+
 # `@observerx/qq`
 
 ObserverX bot QQ port.

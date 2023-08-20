@@ -1,3 +1,5 @@
+![banner](../../assets/core.jpg)
+
 # `@observerx/core`
 
 ObserverX bot core.

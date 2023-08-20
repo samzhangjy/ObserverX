@@ -1,3 +1,5 @@
+![banner](../../assets/platform-console.jpg)
+
 # `@observerx/console`
 
 ObserverX bot console port.

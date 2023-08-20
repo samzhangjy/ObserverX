@@ -1,3 +1,5 @@
+![banner](../../assets/platform-server.jpg)
+
 # `@observerx/server`
 
 HTTP server for ObserverX, based on Expressjs.
