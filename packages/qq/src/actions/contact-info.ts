@@ -1,24 +1,24 @@
-import { Action, ActionConfig } from '@observerx/core';
+import ObserverX, { Action } from '@observerx/core';
 import Contact from '../entity/Contact.js';
 import { getGroupName, getUserName } from '../gocq.js';
 
-export async function getContactInfo(_arg0: any, config: ActionConfig) {
-  const contactRepository = config.dataSource.getRepository(Contact);
-  return contactRepository.findOneBy({ parentId: config.parentId });
+export async function getContactInfo(_arg0: any, bot: ObserverX) {
+  const contactRepository = bot.dataSource.getRepository(Contact);
+  return contactRepository.findOneBy({ parentId: bot.parentId });
 }
 
-export async function refreshContactInfo(_arg0: any, config: ActionConfig) {
-  const contactRepository = config.dataSource.getRepository(Contact);
-  const contact = await contactRepository.findOneBy({ parentId: config.parentId });
+export async function refreshContactInfo(_arg0: any, bot: ObserverX) {
+  const contactRepository = bot.dataSource.getRepository(Contact);
+  const contact = await contactRepository.findOneBy({ parentId: bot.parentId });
   if (!contact) {
     return {
       status: 'error',
       message: 'Contact not found.',
     };
   }
-  contact.name = config.parentId.startsWith('DM_')
-    ? await getUserName(config.parentId.replace('DM_', ''))
-    : await getGroupName(config.parentId.replace('GROUP_', ''));
+  contact.name = bot.parentId.startsWith('DM_')
+    ? await getUserName(bot.parentId.replace('DM_', ''))
+    : await getGroupName(bot.parentId.replace('GROUP_', ''));
   await contactRepository.save(contact);
   return { status: 'success' };
 }

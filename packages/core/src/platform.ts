@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-useless-constructor, @typescript-eslint/no-empty-function */
 import { Entity } from '@observerx/database';
 import { DataSource } from 'typeorm';
+import type ObserverX from './connector.js';
 
 abstract class Platform {
   protected constructor(dataSource: DataSource) {}
@@ -9,7 +10,7 @@ abstract class Platform {
 
   public abstract invokePlatformAction(actionName: string, ...args: any[]): any | Promise<any>;
 
-  public abstract start(): void;
+  public abstract start(...args: any[]): void;
 
   public abstract stop(): void;
 

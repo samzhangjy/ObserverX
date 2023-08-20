@@ -1,4 +1,4 @@
-import Action from './action.js';
+import { Action, type ActionBundle } from '@observerx/core';
 
 export function getCurrentTime() {
   return new Date().toString();
@@ -22,4 +22,6 @@ const getCurrentTimeAction = new Action(
   getCurrentTime,
 );
 
-export default getCurrentTimeAction;
+const actions: ActionBundle = [getCurrentTimeAction];
+
+export default actions;

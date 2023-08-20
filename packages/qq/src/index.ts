@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import ObserverX, { addActions, type BotModel, ChatResult, Platform } from '@observerx/core';
+import ObserverX, { type BotModel, ChatResult, Platform } from '@observerx/core';
 import process from 'process';
 import chalk from 'chalk';
 import { DataSource, Repository } from 'typeorm';
@@ -41,8 +41,6 @@ class PlatformQQ implements Platform {
     }
 
     this.contactRepository = dataSource.getRepository(Contact);
-
-    addActions(getContactInfoAction, refreshContactInfoAction);
 
     this.initialize();
   }
@@ -126,6 +124,7 @@ class PlatformQQ implements Platform {
           model: (currentContact.model as BotModel) ?? 'GPT-3.5',
           parentId,
           dataSource: this.dataSource,
+          actions: [getContactInfoAction, refreshContactInfoAction],
         }),
       );
       setInterval(() => {
@@ -202,10 +201,7 @@ class PlatformQQ implements Platform {
     currentContact.model = model;
     if (this.botMap.has(parentId)) {
       const bot = this.botMap.get(parentId);
-      bot.changeBotConfig({
-        ...bot.getBotConfig(),
-        model,
-      });
+      bot.model = model;
     }
     await this.contactRepository.save(currentContact);
   }

@@ -1,12 +1,11 @@
-import { CompletionCreateParams } from 'openai/resources/chat';
+import { CreateChatCompletionRequestMessage } from 'openai/resources/chat';
 import { DeepPartial } from 'typeorm';
 import Message from '../entity/Message.js';
-import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
 
 // eslint-disable-next-line import/prefer-default-export
 export function transformMessageToOpenAIFormat(
   message: DeepPartial<Message>,
-): CreateChatCompletionRequestStreaming.Message {
+): CreateChatCompletionRequestMessage {
   return {
     role: message.role,
     content:
@@ -21,7 +20,7 @@ export function transformMessageToOpenAIFormat(
             content: message.content,
           })
         : message.content,
-    function_call: message.action as CreateChatCompletionRequestStreaming.Message.FunctionCall,
+    function_call: message.action as CreateChatCompletionRequestMessage.FunctionCall,
     name: message.actionName,
   };
 }

@@ -1,17 +1,28 @@
 export { default, type ChatResult, type IChat } from './connector.js';
 export { default as getMessages } from './messages.js';
-export { addAction, addActions } from './actions/index.js';
 export {
-  default as Action,
-  type ActionInvoker,
-  type ActionParameters,
-  type ActionProperties,
-  type ActionConfig,
-  type ActionDoc,
-  type ActionBaseStatus,
-  type ChangeActionConfig,
-} from './actions/action.js';
+  Action,
+  ActionProperties,
+  ActionParameters,
+  ActionDoc,
+  ActionInvoker,
+  ActionBaseStatus,
+  ActionBundle,
+} from './actions/index.js';
+export {
+  MiddlewareProcessorReturns,
+  Middleware,
+  MiddlewarePreFunctionCallInfo,
+  MiddlewarePostFunctionCallInfo,
+  MiddlewareClassType,
+} from './middlewares/index.js';
+export { Plugin } from './plugins/index.js';
 export { default as User } from './entity/User.js';
-export { default as Message } from './entity/Message.js';
+export { default as Message, MessageRole } from './entity/Message.js';
 export { default as Platform } from './platform.js';
-export { type BotModel } from './config.js';
+export { type BotModel, modelMap } from './config.js';
+export {
+  limitTokensFromMessages,
+  getTokenCountFromMessages,
+  getTokenCountFromMessage,
+} from './common/token-limiter.js';

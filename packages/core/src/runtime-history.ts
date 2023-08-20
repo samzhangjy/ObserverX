@@ -1,12 +1,12 @@
-import { ChatCompletion, CompletionCreateParams } from 'openai/resources/chat';
+import { ChatCompletion, CreateChatCompletionRequestMessage } from 'openai/resources/chat';
 import Message from './entity/Message.js';
-import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
 import User from './entity/User';
+import FunctionCall = CreateChatCompletionRequestMessage.FunctionCall;
 
 class RuntimeHistory {
   constructor(
     public id: number,
-    public role: ChatCompletion.Choice.Message['role'],
+    public role: ChatCompletion.Choice['message']['role'],
     public content: string,
     public timestamp: Date,
     public action?: FunctionCall,

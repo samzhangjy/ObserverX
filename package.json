@@ -2,6 +2,7 @@
   "name": "@observerx/monorepo",
   "version": "0.0.0",
   "description": "Your AI mate.",
+  "private": true,
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

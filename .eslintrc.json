@@ -27,7 +27,10 @@
     "no-console": "off",
     "no-restricted-syntax": "off",
     "class-methods-use-this": "off",
-    "no-nested-ternary": "off"
+    "no-nested-ternary": "off",
+    "no-param-reassign": ["error", {
+      "props": false
+    }]
   },
   "root": true
 }

@@ -2,20 +2,22 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import * as fs from 'fs';
 import { DataSource, DeepPartial, Repository } from 'typeorm';
-import { Chat, CompletionCreateParams } from 'openai/resources/chat';
+import { Chat, CreateChatCompletionRequestMessage } from 'openai/resources/chat';
+import { APIError } from 'openai/error';
 import { encode } from 'gpt-tokenizer';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { type Entity } from '@observerx/database';
+import { Stream } from 'openai/streaming';
 import RuntimeHistory from './runtime-history.js';
-import { actionMap, actions } from './actions/index.js';
+import { Action } from './actions/index.js';
 import Message, { MessageRole } from './entity/Message.js';
 import { BotModel, modelMap } from './config.js';
-import { ActionConfig } from './actions/action.js';
 import { getTokenCountFromMessage, limitTokensFromMessages } from './common/token-limiter.js';
 import { transformMessageToOpenAIFormat } from './common/transform.js';
 import User from './entity/User.js';
-import CreateChatCompletionRequestStreaming = CompletionCreateParams.CreateChatCompletionRequestStreaming;
+import { MiddlewareClassType } from './middlewares/index.js';
+import { Plugin, PluginManager } from './plugins/index.js';
 import ChatCompletionChunk = Chat.ChatCompletionChunk;
 import ChatCompletion = Chat.ChatCompletion;
 
@@ -39,9 +41,8 @@ export interface ChatResult {
     | 'message-start'
     | 'message-part'
     | 'message-end'
-    | 'update-info'
-    | 'update-info-result'
-    | 'update-info-action';
+    | 'error'
+    | (string & {});
 
   /**
    * Action arguments.
@@ -62,11 +63,16 @@ export interface ChatResult {
    * Message content.
    */
   content?: string;
+
+  /**
+   * Possible error thrown by OpenAI API.
+   */
+  error?: APIError;
 }
 
 type ChatInner = AsyncGenerator<ChatResult, void | null | ChatInner>;
 
-export type IChat = ChatInner | string;
+export type IChat = ChatInner;
 
 export interface ChatInput {
   senderId: string;
@@ -77,6 +83,9 @@ export interface IObserverX {
   prompt?: BotPrompt;
   model?: BotModel;
   parentId?: string;
+  actions?: Action[];
+  middlewares?: MiddlewareClassType[];
+  plugins?: Plugin[];
   dataSource: DataSource;
 }
 
@@ -88,17 +97,17 @@ class ObserverX {
 
   public parentId: string = 'UNKNOWN';
 
-  private history: RuntimeHistory[] = [];
+  public prompt: BotPrompt = 'default';
 
-  private currentPrompt: string | null = null;
+  public readonly dataSource: DataSource;
+
+  private history: RuntimeHistory[] = [];
 
   private readonly openai: OpenAI;
 
   private userTurns: number = 0;
 
   private isUpdatingUserInfo: boolean = false;
-
-  private readonly INFO_UPDATE_DELTA = 8;
 
   private readonly messageRepository: Repository<Message>;
 
@@ -111,27 +120,35 @@ class ObserverX {
 
   private readonly MAX_CONTIGUOUS_FUNCTION_CALLS = 8;
 
-  public prompt: BotPrompt = 'default';
-
-  private readonly dataSource: DataSource;
+  private readonly pluginManager: PluginManager = new PluginManager();
 
   /**
    * Create a new bot.
    * @param prompt Bot prompt to use.
    * @param model Bot model to use.
    * @param parentId Conversation parent ID.
+   * @param actions Actions allowed for bot to use.
+   * @param middlewares Bot middlewares.
+   * @param plugins Bot plugins.
    * @param dataSource TypeORM database source to use.
    */
   constructor({
     prompt = 'default',
     model = 'GPT-3.5',
     parentId = 'UNKNOWN',
+    actions = [],
+    middlewares = [],
+    plugins = [],
     dataSource,
   }: IObserverX) {
     this.dataSource = dataSource;
     this.prompt = prompt;
     this.model = model;
     this.parentId = parentId;
+
+    this.pluginManager.addPlugins(...plugins);
+    this.pluginManager.actionManager.addActions(...actions);
+    this.pluginManager.middlewareManager.addMiddlewares(...middlewares);
 
     this.messageRepository = this.dataSource.getRepository(Message);
     this.userRepository = this.dataSource.getRepository(User);
@@ -160,16 +177,8 @@ class ObserverX {
       });
   }
 
-  private get actionConfig(): ActionConfig {
-    return {
-      model: this.model,
-      parentId: this.parentId,
-      dataSource: this.dataSource,
-    };
-  }
-
-  public getBotConfig() {
-    return this.actionConfig;
+  public get totalTokens() {
+    return this.history.reduce((prev: number, history) => prev + history.tokens ?? 0, 0);
   }
 
   public static getDatabaseEntities(): Entity[] {
@@ -182,11 +191,7 @@ class ObserverX {
    */
   public async chat(payload: ChatInput | null): Promise<IChat> {
     this.userTurns += 1;
-    try {
-      return this.chatInner(payload);
-    } catch (e) {
-      return `[ObserverX] An unexpected error occurred: ${e.toString()}.`;
-    }
+    return this.chatInner(payload);
   }
 
   public async addMessageToQueue(payload: ChatInput) {
@@ -200,23 +205,14 @@ class ObserverX {
     });
   }
 
-  public changeBotConfig(config: ActionConfig) {
-    if (!['GPT-3.5', 'GPT-4'].includes(config.model)) {
-      throw new Error('Invalid model.');
-    }
-    this.model = config.model ?? this.model;
-    this.parentId = config.parentId ?? this.parentId;
-
-    // IMPORTANT: prevent overflowing when switching from high-limit models to low-limit models.
-    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
-  }
-
   /**
    * Create a message record in the database and add it to local history.
+   *
+   * NOTE: this function should ONLY be used by middlewares / actions.
+   *       For end-users, use `addMessageToQueue` instead.
    * @param message Message object to create.
-   * @private
    */
-  private async createMessage(message: DeepPartial<Omit<Message, 'tokens'>>) {
+  public async createMessage(message: DeepPartial<Omit<Message, 'tokens'>>) {
     let sender = await this.userRepository.findOneBy({ id: message.sender?.id ?? '' });
     if (message.sender?.id && !sender) {
       sender = this.userRepository.create({
@@ -233,17 +229,7 @@ class ObserverX {
     await this.messageRepository.save(messageRecord);
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
 
-    // remove older history to prevent exceeding token limit
-    // NOTE: useless for now since `token-limiter` took place
-    // if (this.history.length > this.HISTORY_COUNT_LIMIT) {
-    //   this.history.shift();
-    // }
-
     this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
-  }
-
-  public get totalTokens() {
-    return this.history.reduce((prev: number, history) => prev + history.tokens ?? 0, 0);
   }
 
   /**
@@ -253,19 +239,12 @@ class ObserverX {
    * @private
    */
   private async *chatInner(payload: ChatInput | null, functionCallCnt: number = 0): ChatInner {
-    // remind bot to update user information
-    if (this.userTurns >= this.INFO_UPDATE_DELTA) {
-      yield {
-        type: 'update-info',
-      };
-      await this.createMessage({
-        role: MessageRole.SYSTEM,
-        content:
-          "Please update user(s)'s personality traits, hobbies and other things according to your conversation. Do not reply to this message.",
-      });
-      this.userTurns = 0;
-      this.isUpdatingUserInfo = true;
-      return yield* this.chatInner(null);
+    for (const middleware of this.pluginManager.middlewareManager.middlewares) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await middleware.preProcess(payload, this);
+      if (result) {
+        yield result.result;
+      }
     }
 
     if (payload !== null) {
@@ -289,7 +268,13 @@ class ObserverX {
 
     const stream = await this.getNextMessage(this.getChatCompletionRequest());
     let isFirstContentPart = true;
+    let error: APIError | null = null;
+
     for await (const part of stream) {
+      if (part.status !== 'success') {
+        error = part.error;
+        break;
+      }
       const { delta } = part;
       Object.entries(delta).forEach(([key, value]) => {
         if (reply[key] === null) {
@@ -333,6 +318,14 @@ class ObserverX {
       }
     }
 
+    if (error) {
+      yield {
+        type: 'error',
+        error,
+      };
+      return;
+    }
+
     const replyContent = reply.content;
     await this.createMessage({
       role: MessageRole.ASSISTANT,
@@ -340,37 +333,35 @@ class ObserverX {
       action: reply.function_call,
     });
 
-    let isJSON = true;
-
-    try {
-      JSON.parse(replyContent);
-    } catch {
-      isJSON = false;
-    }
-
-    if (isJSON) {
-      await this.createMessage({
-        role: MessageRole.SYSTEM,
-        content: 'Please stop replying in JSON format. Use plain text instead.',
-      });
-    }
-
     // function call handling
     if (finishReason === 'function_call') {
       const actionName = reply.function_call.name;
       const actionArgs = JSON.parse(reply.function_call.arguments);
-      const action = actionMap[actionName];
+      const action = this.pluginManager.actionMap[actionName];
 
       yield {
-        type: this.isUpdatingUserInfo ? 'update-info-action' : 'action',
+        type: 'action',
         actionArgs,
         actionName,
       };
 
+      for (const middleware of this.pluginManager.middlewares) {
+        // IMPORTANT: keep the middleware execution order AS-IS
+        // eslint-disable-next-line no-await-in-loop
+        const result = await middleware.preFunctionCall(
+          {
+            name: actionName,
+            args: actionArgs,
+          },
+          this,
+        );
+        if (result) {
+          yield result.result;
+        }
+      }
+
       // IMPORTANT: `actionResponse` MUST NOT be falsy or OpenAI will throw a remote error
-      let actionResponse =
-        (await action.invoke(actionArgs, this.actionConfig, this.changeBotConfig.bind(this))) ??
-        'success';
+      let actionResponse = (await action.invoke(actionArgs, this)) ?? 'success';
       if (functionCallCnt > this.MAX_CONTIGUOUS_FUNCTION_CALLS) {
         actionResponse = {
           status: 'error',
@@ -384,18 +375,40 @@ class ObserverX {
       });
 
       yield {
-        type: this.isUpdatingUserInfo ? 'update-info-result' : 'action-result',
+        type: 'action-result',
         result: actionResponse,
       };
+
+      for (const middleware of this.pluginManager.middlewares) {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await middleware.postFunctionCall(
+          {
+            name: actionName,
+            args: actionArgs,
+            response: actionResponse,
+          },
+          this,
+        );
+        if (result) {
+          yield result.result;
+        }
+      }
 
       if (this.isUpdatingUserInfo) {
         this.isUpdatingUserInfo = false;
       }
 
-      return yield* this.chatInner(null, functionCallCnt + 1);
+      yield* this.chatInner(null, functionCallCnt + 1);
+      return;
     }
 
-    return undefined;
+    for (const middleware of this.pluginManager.middlewares) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await middleware.postProcess(payload, this);
+      if (result) {
+        yield result.result;
+      }
+    }
   }
 
   /**
@@ -416,7 +429,7 @@ class ObserverX {
    * Builds chat history in OpenAI required format.
    * @private
    */
-  private getChatCompletionRequest(): CreateChatCompletionRequestStreaming.Message[] {
+  private getChatCompletionRequest(): CreateChatCompletionRequestMessage[] {
     const systemPrompt = {
       role: MessageRole.SYSTEM,
       content: this.prompt,
@@ -432,7 +445,7 @@ class ObserverX {
     const messages: ({
       id: number;
       tokens: number;
-    } & CreateChatCompletionRequestStreaming.Message)[] = [
+    } & CreateChatCompletionRequestMessage)[] = [
       {
         ...systemPrompt,
         tokens: getTokenCountFromMessage(systemPrompt),
@@ -493,20 +506,37 @@ class ObserverX {
    * @private
    */
   private async *getNextMessage(
-    messages: CreateChatCompletionRequestStreaming.Message[],
-  ): AsyncGenerator<ChatCompletionChunk.Choice, any> {
-    const stream = await this.openai.chat.completions.create({
-      model: modelMap[this.model].name,
-      messages,
-      functions: actions,
-      stream: true,
-    });
+    messages: CreateChatCompletionRequestMessage[],
+  ): AsyncGenerator<
+    (ChatCompletionChunk.Choice & { status: 'success' }) | { status: 'error'; error: APIError },
+    any
+  > {
+    let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk>;
+    try {
+      stream = await this.openai.chat.completions.create({
+        model: modelMap[this.model].name,
+        messages,
+        functions:
+          this.pluginManager.actionDocs.length > 0 ? this.pluginManager.actionDocs : undefined,
+        stream: true,
+      });
+    } catch (e) {
+      yield {
+        status: 'error',
+        error: e,
+      };
+      return;
+    }
 
     for await (const part of stream) {
       try {
-        yield part.choices[0];
-      } catch {
-        // ignore
+        yield { ...part.choices[0], status: 'success' };
+      } catch (e) {
+        yield {
+          status: 'error',
+          error: e,
+        };
+        return;
       }
     }
   }

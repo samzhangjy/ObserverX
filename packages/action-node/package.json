@@ -1,0 +1,31 @@
+{
+  "name": "@observerx/action-node",
+  "version": "1.0.0-alpha.2",
+  "description": "Node runner action for ObserverX.",
+  "main": "dist/index.js",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "tsc -w",
+    "start": "node ./dist/index.js",
+    "build": "tsc",
+    "lint": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.1",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "eslint": "^8.45.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.1.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-prettier": "^5.0.0",
+    "lerna": "^7.1.4",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@observerx/core": "workspace:*"
+  }
+}

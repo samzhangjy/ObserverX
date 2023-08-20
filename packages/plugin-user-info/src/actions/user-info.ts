@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import User from '../entity/User.js';
-import Action, { ActionBaseStatus, ActionConfig, ActionParameters } from './action.js';
+import { User, ActionBaseStatus, ActionParameters, Action, ActionBundle } from '@observerx/core';
+import type ObserverX from '@observerx/core';
 
 export interface UpdateUserInfoParameters extends ActionParameters {
   user_id: string;
@@ -9,12 +9,9 @@ export interface UpdateUserInfoParameters extends ActionParameters {
   hobbies?: string;
 }
 
-export async function updateUserInfo(
-  userInfo: Partial<UpdateUserInfoParameters>,
-  config: ActionConfig,
-) {
+export async function updateUserInfo(userInfo: Partial<UpdateUserInfoParameters>, bot: ObserverX) {
   try {
-    const userRepository = config.dataSource.getRepository(User);
+    const userRepository = bot.dataSource.getRepository(User);
     let user = await userRepository.findOneBy({ id: userInfo.user_id });
     if (!user) {
       user = await userRepository.create(userInfo);
@@ -49,12 +46,9 @@ export interface GetUserInfoParameters extends ActionParameters {
   user_id: string;
 }
 
-export async function getUserInfo(
-  { user_id: userId }: GetUserInfoParameters,
-  config: ActionConfig,
-) {
+export async function getUserInfo({ user_id: userId }: GetUserInfoParameters, bot: ObserverX) {
   try {
-    const userRepository = config.dataSource.getRepository(User);
+    const userRepository = bot.dataSource.getRepository(User);
     return await userRepository.findOneBy({ id: userId });
   } catch (e) {
     return e.toString();
@@ -114,3 +108,7 @@ export const getUserInfoAction = new Action(
   },
   getUserInfo,
 );
+
+const actions: ActionBundle = [updateUserInfoAction, getUserInfoAction];
+
+export default actions;

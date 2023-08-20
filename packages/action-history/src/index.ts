@@ -1,9 +1,14 @@
 import 'dotenv/config';
 import { instanceToPlain } from 'class-transformer';
-import Message from '../entity/Message.js';
-import Action, { ActionConfig, ActionParameters } from './action.js';
-import { modelMap } from '../config.js';
-import { limitTokensFromMessages } from '../common/token-limiter.js';
+import type ObserverX from '@observerx/core';
+import {
+  Action,
+  ActionBundle,
+  ActionParameters,
+  limitTokensFromMessages,
+  Message,
+  modelMap,
+} from '@observerx/core';
 
 export interface SearchChatHistoryParameters extends ActionParameters {
   keyword?: string;
@@ -50,7 +55,7 @@ function getQueryWithParams(sql: string, params: any[]) {
 
 export async function searchChatHistory(
   { keyword, date, time_range, page = 1 }: SearchChatHistoryParameters,
-  config: ActionConfig,
+  bot: ObserverX,
 ) {
   let timeRangeBegin = null;
   let timeRangeEnd = null;
@@ -63,7 +68,7 @@ export async function searchChatHistory(
       .map((t) => t.trim());
   }
 
-  const repository = config.dataSource.getRepository(Message);
+  const repository = bot.dataSource.getRepository(Message);
 
   const searchQuery = repository
     .createQueryBuilder()
@@ -86,7 +91,7 @@ export async function searchChatHistory(
         : `message.timestamp BETWEEN :begin AND :end`,
       { date, begin: timeRangeBegin, end: timeRangeEnd },
     )
-    .andWhere('message.parentId = :parentId', { parentId: config.parentId });
+    .andWhere('message.parentId = :parentId', { parentId: bot.parentId });
 
   const [sqlWithoutParams, params] = searchQuery.getQueryAndParameters();
   const rawSql = getQueryWithParams(sqlWithoutParams, params);
@@ -98,7 +103,7 @@ export async function searchChatHistory(
       .take(perPage)
       .skip((page - 1) * perPage)
       .getMany(),
-    modelMap[config.model].tokenLimit / 3,
+    modelMap[bot.model].tokenLimit / 3,
   );
 
   // TypeORM builtin support for COUNT(DISTINCT ...) is very buggy and includes duplicates,
@@ -124,8 +129,8 @@ export interface GetMessageParameters {
   id: number;
 }
 
-export async function getMessage({ id: messageId }: GetMessageParameters, config: ActionConfig) {
-  const repository = config.dataSource.getRepository(Message);
+export async function getMessage({ id: messageId }: GetMessageParameters, bot: ObserverX) {
+  const repository = bot.dataSource.getRepository(Message);
   return repository.findOneBy({ id: messageId });
 }
 
@@ -185,3 +190,7 @@ export const getMessageAction = new Action(
   },
   getMessage,
 );
+
+const actions: ActionBundle = [searchChatHistoryAction, getMessageAction];
+
+export default actions;

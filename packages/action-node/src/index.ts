@@ -2,7 +2,7 @@ import { exec as originalExec } from 'node:child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as util from 'util';
-import Action from './action.js';
+import { Action, ActionBundle } from '@observerx/core';
 
 const exec = util.promisify(originalExec);
 
@@ -54,4 +54,6 @@ const runNodeCodeAction = new Action(
   runNodeCode,
 );
 
-export default runNodeCodeAction;
+const actions: ActionBundle = [runNodeCodeAction];
+
+export default actions;

@@ -1,22 +1,12 @@
-import { DataSource } from 'typeorm';
-import { BotModel } from '../config.js';
-
-export interface ActionConfig {
-  model: BotModel;
-  parentId: string;
-  dataSource: DataSource;
-}
+import type ObserverX from '../connector.js';
 
 export interface ActionParameters {
   [key: string]: any;
 }
 
-export type ChangeActionConfig = (config: ActionConfig) => void;
-
 export type ActionInvoker<T extends ActionParameters = ActionParameters, U extends any = any> = (
   params: T,
-  config: ActionConfig,
-  changeConfig: ChangeActionConfig,
+  bot: ObserverX,
 ) => U;
 
 export interface ActionProperties {
@@ -40,12 +30,8 @@ class Action<T extends ActionInvoker = ActionInvoker, U extends string = string>
     private action: T,
   ) {}
 
-  public invoke(
-    params: ActionParameters,
-    config: ActionConfig,
-    changeConfig: ChangeActionConfig,
-  ): ReturnType<T> {
-    return this.action(params, config, changeConfig);
+  public invoke(params: ActionParameters, bot: ObserverX): ReturnType<T> {
+    return this.action(params, bot);
   }
 }
 
@@ -53,5 +39,7 @@ export enum ActionBaseStatus {
   SUCCESS = 'success',
   ERROR = 'error',
 }
+
+export type ActionBundle = Action[];
 
 export default Action;

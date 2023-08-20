@@ -1,8 +1,8 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { CompletionCreateParams } from 'openai/resources/chat';
+import { CreateChatCompletionRequestMessage } from 'openai/resources/chat';
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
-import FunctionCall = CompletionCreateParams.CreateChatCompletionRequestStreaming.Message.FunctionCall;
 import type User from './User.js';
+import FunctionCall = CreateChatCompletionRequestMessage.FunctionCall;
 
 export enum MessageRole {
   SYSTEM = 'system',

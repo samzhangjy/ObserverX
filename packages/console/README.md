@@ -11,17 +11,11 @@ $ npm install @observerx/console
 ## Usage
 
 ```js
-import chat from '@observerx/console';
+import PlatformConsole from '@observerx/console';
 
-chat();
-```
+const platform = new PlatformConsole(dataSource);
 
-Or if you want to customize the parameters:
-
-```js
-import { chatWithParams } from '@observerx/core';
-
-chatWithParams(/* params */);
+platform.start({ /* params */ });
 ```
 
 This feature was originally from `@oberverx/core` package.

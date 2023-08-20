@@ -1,9 +1,9 @@
-import User from '../entity/User.js';
-import Action, { ActionConfig, ActionParameters, ChangeActionConfig } from './action.js';
+import type ObserverX from '@observerx/core';
+import { User, Action, ActionParameters, ActionBundle } from '@observerx/core';
 
-export async function getBotModel(_arg0: any, config: ActionConfig) {
+export async function getBotModel(_arg0: any, bot: ObserverX) {
   return {
-    model: config.model,
+    model: bot.model,
     status: 'success',
   };
 }
@@ -15,10 +15,9 @@ export interface ChangeBotModelParameters extends ActionParameters {
 
 export async function changeBotModel(
   { invoker_id, model }: ChangeBotModelParameters,
-  config: ActionConfig,
-  changeConfig: ChangeActionConfig,
+  bot: ObserverX,
 ) {
-  const userRepository = config.dataSource.getRepository(User);
+  const userRepository = bot.dataSource.getRepository(User);
   const user = await userRepository.findOneBy({ id: invoker_id });
   if (!user) {
     return {
@@ -38,10 +37,7 @@ export async function changeBotModel(
       status: 'error',
     };
   }
-  changeConfig({
-    ...config,
-    model,
-  });
+  bot.model = model;
   return { status: 'success' };
 }
 
@@ -84,3 +80,7 @@ export const changeBotModelAction = new Action(
   },
   changeBotModel,
 );
+
+const actions: ActionBundle = [getBotModelAction, changeBotModelAction];
+
+export default actions;
