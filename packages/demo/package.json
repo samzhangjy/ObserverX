@@ -1,6 +1,6 @@
 {
   "name": "@observerx/demo",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "ObserverX demo.",
   "private": true,
   "main": "dist/index.js",
@@ -28,13 +28,13 @@
   },
   "dependencies": {
     "@observerx/action-bot-info": "workspace:*",
-    "@observerx/action-time": "workspace:*",
-    "@observerx/action-node": "workspace:*",
-    "@observerx/core": "workspace:*",
     "@observerx/action-history": "workspace:*",
-    "@observerx/plugin-default": "workspace:*",
-    "@observerx/plugin-user-info": "workspace:*",
+    "@observerx/action-node": "workspace:*",
+    "@observerx/action-time": "workspace:*",
     "@observerx/console": "workspace:*",
-    "@observerx/database": "workspace:*"
+    "@observerx/core": "workspace:*",
+    "@observerx/database": "workspace:*",
+    "@observerx/plugin-default": "workspace:*",
+    "@observerx/plugin-user-info": "workspace:*"
   }
 }

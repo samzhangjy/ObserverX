@@ -1,6 +1,6 @@
 {
   "name": "@observerx/plugin-default",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "Default plugins for ObserverX.",
   "main": "dist/index.js",
   "type": "module",
@@ -27,9 +27,9 @@
   },
   "dependencies": {
     "@observerx/action-bot-info": "workspace:*",
-    "@observerx/action-time": "workspace:*",
+    "@observerx/action-history": "workspace:*",
     "@observerx/action-node": "workspace:*",
-    "@observerx/core": "workspace:*",
-    "@observerx/action-history": "workspace:*"
+    "@observerx/action-time": "workspace:*",
+    "@observerx/core": "workspace:*"
   }
 }
