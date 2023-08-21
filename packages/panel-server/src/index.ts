@@ -5,6 +5,8 @@ import PlatformQQ from '@observerx/qq';
 import { Application } from '@observerx/server-util';
 import expressBasicAuth from 'express-basic-auth';
 import * as fs from 'fs';
+import pluginDefault from '@observerx/plugin-default';
+import pluginUserInfo from '@observerx/plugin-user-info';
 import platforms from './platforms.js';
 import controllers from './controllers/index.js';
 
@@ -17,7 +19,12 @@ class PanelServer {
     addEntities(...ObserverX.getDatabaseEntities(), ...PlatformQQ.getDatabaseEntities());
     this.dataSource = getDataSource();
     this.dataSource.initialize().then((dataSource) => {
-      platforms.set('qq', new PlatformQQ(dataSource));
+      platforms.set(
+        'qq',
+        new PlatformQQ(dataSource, {
+          plugins: [pluginDefault, pluginUserInfo],
+        }),
+      );
       for (const platform of platforms) {
         platform[1].start();
       }

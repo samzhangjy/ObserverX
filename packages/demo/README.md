@@ -1,9 +1,3 @@
-# `@observerx/plugin-default`
+# `@observerx/demo`
 
-ObserverX default plugins.
-
-## Installation
-
-```bash
-$ npm install @observerx/plugin-default
-```
+Development test demo.

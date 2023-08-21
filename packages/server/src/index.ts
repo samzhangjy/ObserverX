@@ -6,8 +6,6 @@ import { Entity } from '@observerx/database';
 import controllers from './controllers/index.js';
 
 class PlatformHttpServer extends Platform {
-  public readonly platformActions: string[] = [];
-
   private application: Application;
 
   constructor(dataSource: DataSource) {
@@ -21,10 +19,6 @@ class PlatformHttpServer extends Platform {
 
   public static getDatabaseEntities(): Entity[] {
     return [];
-  }
-
-  public invokePlatformAction(): any {
-    return null;
   }
 
   public start() {

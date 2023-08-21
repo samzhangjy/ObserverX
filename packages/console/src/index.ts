@@ -6,8 +6,6 @@ import { addEntities } from '@observerx/database';
 import { DataSource } from 'typeorm';
 
 class PlatformConsole implements Platform {
-  public readonly platformActions = [] as const;
-
   private readonly dataSource: DataSource;
 
   private shouldStop: boolean = false;
@@ -99,8 +97,6 @@ class PlatformConsole implements Platform {
   public stop() {
     this.shouldStop = true;
   }
-
-  public invokePlatformAction() {}
 }
 
 export default PlatformConsole;

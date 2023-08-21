@@ -1,5 +1,12 @@
 import 'dotenv/config';
-import ObserverX, { type BotModel, ChatResult, Platform } from '@observerx/core';
+import ObserverX, {
+  type BotModel,
+  ChatResult,
+  Platform,
+  Plugin,
+  Action,
+  MiddlewareClassType,
+} from '@observerx/core';
 import process from 'process';
 import chalk from 'chalk';
 import { DataSource, Repository } from 'typeorm';
@@ -15,17 +22,13 @@ export interface ISendMessage {
   message: string;
 }
 
-class PlatformQQ implements Platform {
-  public readonly platformActions = [
-    'get_model',
-    'set_model',
-    'get_contacts',
-    'set_contact_enabled',
-    'set_contact_prompt',
-    'set_contact_reply_interval',
-    'get_contact',
-  ] as const;
+export interface IPlatformQQConfig {
+  plugins?: Plugin[];
+  actions?: Action[];
+  middlewares?: MiddlewareClassType[];
+}
 
+class PlatformQQ implements Platform {
   private readonly botMap: Map<string, ObserverX> = new Map();
 
   private readonly hasNewMessages: Map<string, boolean> = new Map();
@@ -34,13 +37,26 @@ class PlatformQQ implements Platform {
 
   private readonly dataSource: DataSource;
 
-  constructor(dataSource: DataSource) {
+  private readonly plugins: Plugin[];
+
+  private readonly actions: Action[];
+
+  private readonly middlewares: MiddlewareClassType[];
+
+  constructor(
+    dataSource: DataSource,
+    { plugins = [], actions = [], middlewares = [] }: IPlatformQQConfig = {},
+  ) {
     this.dataSource = dataSource;
     if (!this.dataSource.isInitialized) {
       throw new Error('Data source not initialized.');
     }
 
     this.contactRepository = dataSource.getRepository(Contact);
+
+    this.plugins = plugins;
+    this.actions = actions;
+    this.middlewares = middlewares;
 
     this.initialize();
   }
@@ -124,11 +140,15 @@ class PlatformQQ implements Platform {
           model: (currentContact.model as BotModel) ?? 'GPT-3.5',
           parentId,
           dataSource: this.dataSource,
-          actions: [getContactInfoAction, refreshContactInfoAction],
+          actions: [...this.actions, getContactInfoAction, refreshContactInfoAction],
+          plugins: this.plugins,
+          middlewares: this.middlewares,
         }),
       );
       setInterval(() => {
-        console.log(chalk.gray('Checking for new messages...'));
+        console.log(
+          chalk.gray('Checking new messages for ') + chalk.blue(parentId) + chalk.gray('...'),
+        );
         this.getResponse(parentId, isPrivate, isPrivate ? senderId : groupId);
       }, currentContact.replyInterval);
     }
@@ -142,32 +162,15 @@ class PlatformQQ implements Platform {
     this.hasNewMessages.set(parentId, true);
   }
 
-  public invokePlatformAction(actionName: (typeof this.platformActions)[number], ...args): any {
-    switch (actionName) {
-      case 'get_model':
-        return this.getBotModel(...(args as Parameters<typeof this.getBotModel>));
-      case 'set_model':
-        return this.setBotModel(...(args as Parameters<typeof this.setBotModel>));
-      case 'get_contacts':
-        return this.getContacts();
-      case 'set_contact_enabled':
-        return this.setContactEnabled(...(args as Parameters<typeof this.setContactEnabled>));
-      case 'set_contact_prompt':
-        return this.setContactPrompt(...(args as Parameters<typeof this.setContactPrompt>));
-      case 'set_contact_reply_interval':
-        return this.setContactReplyInterval(
-          ...(args as Parameters<typeof this.setContactReplyInterval>),
-        );
-      case 'get_contact':
-        return this.getContact(...(args as Parameters<typeof this.getContact>));
-      default:
-        return null;
-    }
-  }
-
-  private logSegment(segment: string | ChatResult) {
-    if (typeof segment === 'string') {
-      console.log(chalk.bold.red(segment));
+  private logSegment(segment: ChatResult) {
+    if (segment.type === 'error') {
+      process.stdout.write(
+        `${chalk.gray('An unexpected error occurred:')}\n${chalk.bold.red(
+          segment.error.name,
+        )} (status=${chalk.blue(segment.error.status)}): ${chalk.bold(
+          segment.error.message,
+        )}\n${chalk.gray(JSON.stringify(segment.error.error, undefined, 2))}`,
+      );
     } else if (segment.type === 'message-start') {
       process.stdout.write(chalk.bold.blue('Replying with: '));
     } else if (segment.type === 'message-part') {
@@ -188,12 +191,12 @@ class PlatformQQ implements Platform {
     }
   }
 
-  private async getBotModel(parentId: string) {
+  public async getBotModel(parentId: string) {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     return currentContact.model;
   }
 
-  private async setBotModel(parentId: string, model: BotModel) {
+  public async setBotModel(parentId: string, model: BotModel) {
     if (!['GPT-3.5', 'GPT-4'].includes(model)) {
       throw new Error('Invalid model.');
     }
@@ -206,21 +209,21 @@ class PlatformQQ implements Platform {
     await this.contactRepository.save(currentContact);
   }
 
-  private async getContacts() {
+  public async getContacts() {
     return this.contactRepository.find();
   }
 
-  private async getContact(parentId: string) {
+  public async getContact(parentId: string) {
     return this.contactRepository.findOneBy({ parentId });
   }
 
-  private async setContactEnabled(parentId: string, enabled: boolean) {
+  public async setContactEnabled(parentId: string, enabled: boolean) {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.enabled = enabled;
     await this.contactRepository.save(currentContact);
   }
 
-  private async setContactPrompt(parentId: string, prompt: string) {
+  public async setContactPrompt(parentId: string, prompt: string) {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.prompt = prompt;
     await this.contactRepository.save(currentContact);
@@ -229,7 +232,7 @@ class PlatformQQ implements Platform {
     }
   }
 
-  private async setContactReplyInterval(parentId: string, replyInterval: number) {
+  public async setContactReplyInterval(parentId: string, replyInterval: number) {
     const currentContact = await this.contactRepository.findOneBy({ parentId });
     currentContact.replyInterval = replyInterval;
     await this.contactRepository.save(currentContact);

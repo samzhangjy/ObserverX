@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
@@ -239,7 +235,7 @@ importers:
         version: 16.3.1
       typeorm:
         specifier: ^0.3.17
-        version: 0.3.17(pg@8.11.1)
+        version: 0.3.17
     devDependencies:
       '@types/node':
         specifier: ^20.4.1
@@ -478,6 +474,12 @@ importers:
       '@observerx/database':
         specifier: workspace:*
         version: link:../database
+      '@observerx/plugin-default':
+        specifier: workspace:*
+        version: link:../plugin-default
+      '@observerx/plugin-user-info':
+        specifier: workspace:*
+        version: link:../plugin-user-info
       '@observerx/qq':
         specifier: workspace:*
         version: link:../qq
@@ -635,7 +637,7 @@ importers:
     devDependencies:
       '@remix-run/dev':
         specifier: ^1.19.3
-        version: 1.19.3(@remix-run/serve@1.19.3)(@types/node@14.18.33)
+        version: 1.19.3(@remix-run/serve@1.19.3)
       '@remix-run/eslint-config':
         specifier: ^1.19.3
         version: 1.19.3(eslint@8.45.0)(react@18.2.0)(typescript@5.1.6)
@@ -787,7 +789,7 @@ importers:
         version: 0.1.13
       typeorm:
         specifier: ^0.3.17
-        version: 0.3.17(pg@8.11.1)
+        version: 0.3.17
       ws:
         specifier: ^8.13.0
         version: 8.13.0
@@ -857,7 +859,7 @@ importers:
         version: 0.1.13
       typeorm:
         specifier: ^0.3.17
-        version: 0.3.17(pg@8.11.1)
+        version: 0.3.17
     devDependencies:
       '@types/express':
         specifier: ^4.17.17
@@ -3699,7 +3701,7 @@ packages:
     engines: {node: '>=14.0.0'}
     dev: false
 
-  /@remix-run/dev@1.19.3(@remix-run/serve@1.19.3)(@types/node@14.18.33):
+  /@remix-run/dev@1.19.3(@remix-run/serve@1.19.3):
     resolution: {integrity: sha512-Yh733OI0AxR7QbPaJbocujxSF1S5CToDmfZnmv5SlTTIXEw5KfnbCceHy9qhUp0nrkz2YT7pd1zbTEVYIi/Vug==}
     engines: {node: '>=14.0.0'}
     hasBin: true
@@ -3721,7 +3723,7 @@ packages:
       '@npmcli/package-json': 2.0.0
       '@remix-run/serve': 1.19.3
       '@remix-run/server-runtime': 1.19.3
-      '@vanilla-extract/integration': 6.2.1(@types/node@14.18.33)
+      '@vanilla-extract/integration': 6.2.1
       arg: 5.0.2
       cacache: 15.3.0
       chalk: 4.1.2
@@ -4217,6 +4219,7 @@ packages:
 
   /@types/node@14.18.33:
     resolution: {integrity: sha512-qelS/Ra6sacc4loe/3MSjXNL1dNQ/GjxNHVzuChwMfmk7HuycRLVQN2qNY3XahK+fZc5E2szqQSKUyAF0E+2bg==}
+    dev: false
 
   /@types/node@18.17.0:
     resolution: {integrity: sha512-GXZxEtOxYGFchyUzxvKI14iff9KZ2DI+A6a37o6EQevtg6uO9t+aUZKcaC1Te5Ng1OnLM7K9NVVj+FbecD9cJg==}
@@ -4591,7 +4594,7 @@ packages:
       outdent: 0.8.0
     dev: true
 
-  /@vanilla-extract/integration@6.2.1(@types/node@14.18.33):
+  /@vanilla-extract/integration@6.2.1:
     resolution: {integrity: sha512-+xYJz07G7TFAMZGrOqArOsURG+xcYvqctujEkANjw2McCBvGEK505RxQqOuNiA9Mi9hgGdNp2JedSa94f3eoLg==}
     dependencies:
       '@babel/core': 7.22.10
@@ -4605,8 +4608,8 @@ packages:
       lodash: 4.17.21
       mlly: 1.4.0
       outdent: 0.8.0
-      vite: 4.4.9(@types/node@14.18.33)
-      vite-node: 0.28.5(@types/node@14.18.33)
+      vite: 4.4.9
+      vite-node: 0.28.5
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -12551,6 +12554,83 @@ packages:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
     dev: true
 
+  /typeorm@0.3.17:
+    resolution: {integrity: sha512-UDjUEwIQalO9tWw9O2A4GU+sT3oyoUXheHJy4ft+RFdnRdQctdQ34L9SqE2p7LdwzafHx1maxT+bqXON+Qnmig==}
+    engines: {node: '>= 12.9.0'}
+    hasBin: true
+    peerDependencies:
+      '@google-cloud/spanner': ^5.18.0
+      '@sap/hana-client': ^2.12.25
+      better-sqlite3: ^7.1.2 || ^8.0.0
+      hdb-pool: ^0.1.6
+      ioredis: ^5.0.4
+      mongodb: ^5.2.0
+      mssql: ^9.1.1
+      mysql2: ^2.2.5 || ^3.0.1
+      oracledb: ^5.1.0
+      pg: ^8.5.1
+      pg-native: ^3.0.0
+      pg-query-stream: ^4.0.0
+      redis: ^3.1.1 || ^4.0.0
+      sql.js: ^1.4.0
+      sqlite3: ^5.0.3
+      ts-node: ^10.7.0
+      typeorm-aurora-data-api-driver: ^2.0.0
+    peerDependenciesMeta:
+      '@google-cloud/spanner':
+        optional: true
+      '@sap/hana-client':
+        optional: true
+      better-sqlite3:
+        optional: true
+      hdb-pool:
+        optional: true
+      ioredis:
+        optional: true
+      mongodb:
+        optional: true
+      mssql:
+        optional: true
+      mysql2:
+        optional: true
+      oracledb:
+        optional: true
+      pg:
+        optional: true
+      pg-native:
+        optional: true
+      pg-query-stream:
+        optional: true
+      redis:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
+      ts-node:
+        optional: true
+      typeorm-aurora-data-api-driver:
+        optional: true
+    dependencies:
+      '@sqltools/formatter': 1.2.5
+      app-root-path: 3.1.0
+      buffer: 6.0.3
+      chalk: 4.1.2
+      cli-highlight: 2.1.11
+      date-fns: 2.30.0
+      debug: 4.3.4
+      dotenv: 16.3.1
+      glob: 8.1.0
+      mkdirp: 2.1.6
+      reflect-metadata: 0.1.13
+      sha.js: 2.4.11
+      tslib: 2.6.1
+      uuid: 9.0.0
+      yargs: 17.7.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /typeorm@0.3.17(pg@8.11.1):
     resolution: {integrity: sha512-UDjUEwIQalO9tWw9O2A4GU+sT3oyoUXheHJy4ft+RFdnRdQctdQ34L9SqE2p7LdwzafHx1maxT+bqXON+Qnmig==}
     engines: {node: '>= 12.9.0'}
@@ -12968,7 +13048,7 @@ packages:
       vfile-message: 3.1.4
     dev: true
 
-  /vite-node@0.28.5(@types/node@14.18.33):
+  /vite-node@0.28.5:
     resolution: {integrity: sha512-LmXb9saMGlrMZbXTvOveJKwMTBTNUH66c8rJnQ0ZPNX+myPEol64+szRzXtV5ORb0Hb/91yq+/D3oERoyAt6LA==}
     engines: {node: '>=v14.16.0'}
     hasBin: true
@@ -12980,7 +13060,7 @@ packages:
       picocolors: 1.0.0
       source-map: 0.6.1
       source-map-support: 0.5.21
-      vite: 4.4.9(@types/node@14.18.33)
+      vite: 4.4.9
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -12992,7 +13072,7 @@ packages:
       - terser
     dev: true
 
-  /vite@4.4.9(@types/node@14.18.33):
+  /vite@4.4.9:
     resolution: {integrity: sha512-2mbUn2LlUmNASWwSCNSJ/EG2HuSRTnVNaydp6vMCm5VIqJsjMfbIWtbH2kDuwUVW5mMUKKZvGPX/rqeqVvv1XA==}
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
@@ -13020,7 +13100,6 @@ packages:
       terser:
         optional: true
     dependencies:
-      '@types/node': 14.18.33
       esbuild: 0.18.20
       postcss: 8.4.27
       rollup: 3.28.0
@@ -13305,3 +13384,7 @@ packages:
   /zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

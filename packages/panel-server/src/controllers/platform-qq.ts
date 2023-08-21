@@ -10,7 +10,7 @@ class PlatformQQController {
     try {
       const qq = platforms.get('qq') as PlatformQQ;
       res.json({
-        contacts: await qq.invokePlatformAction('get_contacts'),
+        contacts: await qq.getContacts(),
         status: 'success',
       });
     } catch (e) {
@@ -27,7 +27,7 @@ class PlatformQQController {
       const qq = platforms.get('qq') as PlatformQQ;
       const { parentId } = req.params;
       res.json({
-        model: await qq.invokePlatformAction('get_model', parentId),
+        model: await qq.getBotModel(parentId),
         status: 'success',
       });
     } catch (e) {
@@ -51,7 +51,7 @@ class PlatformQQController {
         });
         return;
       }
-      await qq.invokePlatformAction('set_model', parentId, model);
+      await qq.setBotModel(parentId, model);
       res.json({ status: 'success' });
     } catch (e) {
       res.json({
@@ -67,7 +67,7 @@ class PlatformQQController {
       const qq = platforms.get('qq') as PlatformQQ;
       const { parentId } = req.params;
       const { prompt } = req.body;
-      await qq.invokePlatformAction('set_contact_prompt', parentId, prompt);
+      await qq.setContactPrompt(parentId, prompt);
       res.json({ status: 'success' });
     } catch (e) {
       res.json({
@@ -90,7 +90,7 @@ class PlatformQQController {
         });
         return;
       }
-      await qq.invokePlatformAction('set_contact_reply_interval', parentId, replyInterval);
+      await qq.setContactReplyInterval(parentId, replyInterval);
       res.json({ status: 'success' });
     } catch (e) {
       res.json({
@@ -106,7 +106,7 @@ class PlatformQQController {
       const qq = platforms.get('qq') as PlatformQQ;
       const { parentId } = req.params;
       res.json({
-        contact: await qq.invokePlatformAction('get_contact', parentId),
+        contact: await qq.getContact(parentId),
         status: 'success',
       });
     } catch (e) {
@@ -130,7 +130,7 @@ class PlatformQQController {
         });
         return;
       }
-      await qq.invokePlatformAction('set_contact_enabled', parentId, enabled);
+      await qq.setContactEnabled(parentId, enabled);
       res.json({ status: 'success' });
     } catch (e) {
       res.json({
