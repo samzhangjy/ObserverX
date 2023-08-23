@@ -155,5 +155,5 @@ platform.start({
 
 <!-- TODO: add more detailed description of platforms -->
 
-这些代码首先从给定的数据源创建一个新的 [`PlatformConsole`](/platforms/console) 对象，然后使用给定的参数启动控制台平台。每个平台都
+这些代码首先从给定的数据源创建一个新的 [`PlatformConsole`](/zh/platforms/console) 对象，然后使用给定的参数启动控制台平台。每个平台都
 有自己的一组参数，所以请确保检查你正在使用的平台的文档。

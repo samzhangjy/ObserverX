@@ -17,6 +17,12 @@ export default defineConfig({
           { text: 'Getting Started', link: '/guide/getting-started' },
         ],
       },
+      {
+        text: 'Platforms',
+        items: [
+          { text: 'Console', link: '/platforms/console' },
+        ],
+      },
     ],
   },
 });

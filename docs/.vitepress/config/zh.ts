@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
-  description: "你的AI伙伴。",
+  description: '你的AI伙伴。',
   themeConfig: {
     nav: [
       { text: '首页', link: '/zh/' },
@@ -15,6 +15,12 @@ export default defineConfig({
         items: [
           { text: '什么是ObserverX？', link: '/zh/guide/' },
           { text: '快速开始', link: '/zh/guide/getting-started' },
+        ],
+      },
+      {
+        text: '平台',
+        items: [
+          { text: '命令行', link: '/zh/platforms/console' },
         ],
       },
     ],
