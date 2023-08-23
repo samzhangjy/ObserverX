@@ -38,7 +38,7 @@
   <p align="center">
     Your AI mate.
     <br />
-    <a href="https://github.com/samzhangjy/ObserverX"><strong>Explore the docs »</strong></a>
+    <a href="https://observerx.samzhangjy.com/"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/samzhangjy/ObserverX">View Demo</a>
