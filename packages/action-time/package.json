@@ -1,6 +1,6 @@
 {
   "name": "@observerx/action-time",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Time action for ObserverX.",
   "main": "dist/index.js",
   "type": "module",

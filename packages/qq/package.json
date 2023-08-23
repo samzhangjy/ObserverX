@@ -1,6 +1,6 @@
 {
   "name": "@observerx/qq",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Your AI mate.",
   "main": "dist/index.js",
   "type": "module",
