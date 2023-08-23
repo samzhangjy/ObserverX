@@ -19,3 +19,6 @@ packages/qq/session.token
 packages/panel-ui/api
 
 lerna-debug.log
+
+docs/.vitepress/dist
+docs/.vitepress/cache

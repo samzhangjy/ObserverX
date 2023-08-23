@@ -6,7 +6,10 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "lint": "eslint . --fix"
+    "lint": "eslint . --fix",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@types/node": "^20.4.1",
@@ -22,6 +25,7 @@
     "eslint-plugin-prettier": "^5.0.0",
     "lerna": "^7.1.5",
     "prettier": "^3.0.0",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "vitepress": "1.0.0-rc.4"
   }
 }

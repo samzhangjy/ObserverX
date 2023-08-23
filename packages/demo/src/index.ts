@@ -9,11 +9,12 @@ const dataSource = getDataSource();
 
 await dataSource.initialize();
 
-const platform = new PlatformConsole(dataSource);
+const platform = new PlatformConsole(dataSource, {
+  plugins: [pluginDefault, pluginUserInfo],
+});
 
 platform.start({
   model: 'GPT-3.5',
   parentId: 'CONSOLE',
   prompt: 'default',
-  plugins: [pluginDefault, pluginUserInfo],
 });
