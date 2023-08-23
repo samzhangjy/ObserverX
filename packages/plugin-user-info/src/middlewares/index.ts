@@ -1,6 +1,6 @@
-import { MiddlewareClassType } from '@observerx/core';
+import { Middleware } from '@observerx/core';
 import UserInfoMiddleware from './user-info.js';
 
-const middlewares: MiddlewareClassType[] = [UserInfoMiddleware];
+const middlewares: (typeof Middleware)[] = [UserInfoMiddleware];
 
 export default middlewares;

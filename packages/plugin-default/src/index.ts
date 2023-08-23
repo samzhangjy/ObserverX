@@ -4,9 +4,10 @@ import nodeAction from '@observerx/action-node';
 import timeAction from '@observerx/action-time';
 import { Plugin } from '@observerx/core';
 
-const pluginDefault: Plugin = {
-  actions: [...botInfoAction, ...historyAction, ...nodeAction, ...timeAction],
-  middlewares: [],
-};
+class PluginDefault extends Plugin {
+  public actions = [...botInfoAction, ...historyAction, ...nodeAction, ...timeAction];
 
-export default pluginDefault;
+  public middlewares = [];
+}
+
+export default PluginDefault;

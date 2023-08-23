@@ -1,9 +1,14 @@
 import readline from 'readline';
 import process from 'process';
-import ObserverX, { Platform } from '@observerx/core';
+import ObserverX, { Action, Middleware, Platform, Plugin } from '@observerx/core';
 import chalk from 'chalk';
-import { addEntities } from '@observerx/database';
 import { DataSource } from 'typeorm';
+
+export interface IPlatformConsoleConfig {
+  plugins?: (typeof Plugin)[];
+  actions?: Action[];
+  middlewares?: (typeof Middleware)[];
+}
 
 class PlatformConsole implements Platform {
   private readonly dataSource: DataSource;
@@ -12,18 +17,45 @@ class PlatformConsole implements Platform {
 
   public bot: ObserverX;
 
-  constructor(dataSource: DataSource) {
+  private readonly plugins: (typeof Plugin)[];
+
+  private readonly actions: Action[];
+
+  private readonly middlewares: (typeof Middleware)[];
+
+  constructor(
+    dataSource: DataSource,
+    { plugins, middlewares, actions }: IPlatformConsoleConfig = {},
+  ) {
     this.dataSource = dataSource;
     if (!this.dataSource.isInitialized) {
       throw new Error('Data source not initialized.');
     }
-    addEntities(...ObserverX.getDatabaseEntities());
+
+    this.plugins = plugins;
+    this.actions = actions;
+    this.middlewares = middlewares;
+
+    this.initialize();
   }
 
-  public initialize() {}
+  public initialize() {
+    this.bot = null;
+  }
 
-  public start(params: Omit<ConstructorParameters<typeof ObserverX>[0], 'dataSource'>) {
-    this.bot = new ObserverX({ ...params, dataSource: this.dataSource });
+  public start(
+    params: Omit<
+      ConstructorParameters<typeof ObserverX>[0],
+      'dataSource' | 'plugins' | 'actions' | 'middlewares'
+    > = {},
+  ) {
+    this.bot = new ObserverX({
+      ...params,
+      dataSource: this.dataSource,
+      plugins: this.plugins,
+      actions: this.actions,
+      middlewares: this.middlewares,
+    });
 
     const reader = readline.createInterface({
       input: process.stdin,

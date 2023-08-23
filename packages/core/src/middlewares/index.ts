@@ -4,5 +4,9 @@ export {
   type MiddlewareProcessorReturns,
   type MiddlewarePreFunctionCallInfo,
   type MiddlewarePostFunctionCallInfo,
-  type MiddlewareClassType,
+  type MiddlewarePreProcessorReturns,
+  type MiddlewarePostProcessorReturns,
+  type MiddlewarePreFunctionCallProcessorReturns,
+  type MiddlewarePostFunctionCallProcessorReturns,
+  type MiddlewareCause,
 } from './middleware.js';

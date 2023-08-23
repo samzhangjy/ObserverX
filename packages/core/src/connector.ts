@@ -1,25 +1,25 @@
-import 'dotenv/config';
-import OpenAI from 'openai';
+import 'dotenv/config'; // eslint-disable-line
 import * as fs from 'fs';
-import { DataSource, DeepPartial, Repository } from 'typeorm';
-import { Chat, CreateChatCompletionRequestMessage } from 'openai/resources/chat';
-import { APIError } from 'openai/error';
-import { encode } from 'gpt-tokenizer';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import OpenAI from 'openai';
+import { DataSource, DeepPartial, Repository } from 'typeorm';
+import { Chat, CreateChatCompletionRequestMessage } from 'openai/resources/chat'; // eslint-disable-line
+import { APIError } from 'openai/error'; // eslint-disable-line
+import { encode } from 'gpt-tokenizer';
 import { type Entity } from '@observerx/database';
-import { Stream } from 'openai/streaming';
+import { Stream } from 'openai/streaming'; // eslint-disable-line
 import RuntimeHistory from './runtime-history.js';
 import { Action } from './actions/index.js';
-import Message, { MessageRole } from './entity/Message.js';
+import Message, { MessageRole } from './entities/Message.js';
 import { BotModel, modelMap } from './config.js';
 import { getTokenCountFromMessage, limitTokensFromMessages } from './common/token-limiter.js';
 import { transformMessageToOpenAIFormat } from './common/transform.js';
-import User from './entity/User.js';
-import { MiddlewareClassType } from './middlewares/index.js';
+import User from './entities/User.js';
 import { Plugin, PluginManager } from './plugins/index.js';
 import ChatCompletionChunk = Chat.ChatCompletionChunk;
 import ChatCompletion = Chat.ChatCompletion;
+import { Middleware, MiddlewareCause } from './middlewares/index.js';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -84,8 +84,8 @@ export interface IObserverX {
   model?: BotModel;
   parentId?: string;
   actions?: Action[];
-  middlewares?: MiddlewareClassType[];
-  plugins?: Plugin[];
+  middlewares?: (typeof Middleware)[];
+  plugins?: (typeof Plugin)[];
   dataSource: DataSource;
 }
 
@@ -182,7 +182,7 @@ class ObserverX {
   }
 
   public static getDatabaseEntities(): Entity[] {
-    return [path.join(__dirname, './entity/*.{js,ts}')];
+    return [path.join(__dirname, './entities/*.{js,ts}')];
   }
 
   /**
@@ -239,11 +239,18 @@ class ObserverX {
    * @private
    */
   private async *chatInner(payload: ChatInput | null, functionCallCnt: number = 0): ChatInner {
+    let shouldReply = true;
+    const invokeCause: MiddlewareCause = functionCallCnt ? 'function' : 'message';
+
     for (const middleware of this.pluginManager.middlewareManager.middlewares) {
       // eslint-disable-next-line no-await-in-loop
-      const result = await middleware.preProcess(payload, this);
-      if (result) {
+      const result = await middleware.preProcess(payload, invokeCause, this);
+      if (!result) continue;
+      if (result.result) {
         yield result.result;
+      }
+      if (result.stopCurrentReply) {
+        shouldReply = false;
       }
     }
 
@@ -293,7 +300,7 @@ class ObserverX {
 
       if (part.finish_reason) {
         finishReason = part.finish_reason;
-        if (part.finish_reason !== 'function_call') {
+        if (part.finish_reason !== 'function_call' && shouldReply) {
           yield { type: 'message-end' };
         }
         break;
@@ -304,7 +311,7 @@ class ObserverX {
         reply.function_call.arguments += delta.function_call.arguments ?? '';
       }
 
-      if (delta.content) {
+      if (delta.content && shouldReply) {
         if (isFirstContentPart) {
           yield {
             type: 'message-start',
@@ -326,12 +333,14 @@ class ObserverX {
       return;
     }
 
-    const replyContent = reply.content;
-    await this.createMessage({
-      role: MessageRole.ASSISTANT,
-      content: replyContent,
-      action: reply.function_call,
-    });
+    if (shouldReply) {
+      const replyContent = reply.content;
+      await this.createMessage({
+        role: MessageRole.ASSISTANT,
+        content: replyContent,
+        action: reply.function_call,
+      });
+    }
 
     // function call handling
     if (finishReason === 'function_call') {
@@ -355,7 +364,7 @@ class ObserverX {
           },
           this,
         );
-        if (result) {
+        if (result && result.result) {
           yield result.result;
         }
       }
@@ -389,7 +398,7 @@ class ObserverX {
           },
           this,
         );
-        if (result) {
+        if (result && result.result) {
           yield result.result;
         }
       }
@@ -404,8 +413,8 @@ class ObserverX {
 
     for (const middleware of this.pluginManager.middlewares) {
       // eslint-disable-next-line no-await-in-loop
-      const result = await middleware.postProcess(payload, this);
-      if (result) {
+      const result = await middleware.postProcess(payload, invokeCause, this);
+      if (result && result.result) {
         yield result.result;
       }
     }

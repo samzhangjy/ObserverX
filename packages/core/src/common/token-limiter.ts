@@ -1,5 +1,5 @@
 import { encode } from 'gpt-tokenizer';
-import Message from '../entity/Message.js';
+import Message from '../entities/Message.js';
 import { transformMessageToOpenAIFormat } from './transform.js';
 
 export interface BaseMessage {

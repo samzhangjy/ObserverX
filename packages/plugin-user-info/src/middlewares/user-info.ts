@@ -3,22 +3,30 @@ import ObserverX, {
   Middleware,
   MiddlewarePostFunctionCallInfo,
   MiddlewarePreFunctionCallInfo,
-  MiddlewareProcessorReturns,
+  MiddlewarePostFunctionCallProcessorReturns,
+  MiddlewarePreFunctionCallProcessorReturns,
+  MiddlewarePreProcessorReturns,
+  MiddlewareCause,
 } from '@observerx/core';
-import { ChatInput } from '@observerx/core/dist/connector';
+import { ChatInput } from '@observerx/core/dist/connector.js';
 
-class UserInfoMiddleware implements Middleware {
+class UserInfoMiddleware extends Middleware {
   private userTurns: number = 0;
 
   private isUpdatingUserInfo: boolean = false;
 
-  private readonly INFO_UPDATE_DELTA = 8;
+  private readonly INFO_UPDATE_DELTA = 2;
+
+  private hasFinishedFunction: boolean = false;
+
+  private hasFinishedProcess: boolean = false;
 
   public async preProcess(
-    payload: ChatInput | null,
+    _payload: ChatInput | null,
+    cause: MiddlewareCause,
     bot: ObserverX,
-  ): Promise<MiddlewareProcessorReturns> {
-    if (payload) {
+  ): Promise<MiddlewarePreProcessorReturns> {
+    if (cause === 'message') {
       this.userTurns += 1;
     }
     // remind bot to update user information
@@ -30,18 +38,29 @@ class UserInfoMiddleware implements Middleware {
       });
       this.userTurns = 0;
       this.isUpdatingUserInfo = true;
+      const shouldReply = this.hasFinishedProcess;
+      this.hasFinishedProcess = false;
+      this.hasFinishedFunction = false;
       return {
         result: {
           type: 'update-info',
         },
+        stopCurrentReply: shouldReply,
       };
     }
     return undefined;
   }
 
-  public postProcess() {}
+  public postProcess() {
+    if (this.hasFinishedFunction) {
+      this.hasFinishedProcess = true;
+    }
+  }
 
-  public preFunctionCall(func: MiddlewarePreFunctionCallInfo): MiddlewareProcessorReturns {
+  public preFunctionCall(
+    func: MiddlewarePreFunctionCallInfo,
+  ): MiddlewarePreFunctionCallProcessorReturns {
+    if (func.name !== 'update_user_info') return {};
     return {
       result: {
         type: 'update-info-action',
@@ -51,7 +70,11 @@ class UserInfoMiddleware implements Middleware {
     };
   }
 
-  public postFunctionCall(func: MiddlewarePostFunctionCallInfo): MiddlewareProcessorReturns {
+  public postFunctionCall(
+    func: MiddlewarePostFunctionCallInfo,
+  ): MiddlewarePostFunctionCallProcessorReturns {
+    if (func.name !== 'update_user_info') return {};
+    this.hasFinishedFunction = true;
     return {
       result: {
         type: 'update-info-result',

@@ -9,12 +9,6 @@ class User {
   @Column({ nullable: true })
   public name?: string;
 
-  @Column({ nullable: true })
-  public personality?: string;
-
-  @Column({ nullable: true })
-  public hobbies?: string;
-
   @OneToMany('Message', (message: Message) => message.sender)
   public messages!: Message[];
 

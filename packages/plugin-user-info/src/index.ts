@@ -1,10 +1,16 @@
 import { Plugin } from '@observerx/core';
 import actions from './actions/index.js';
 import middlewares from './middlewares/index.js';
+import UserInfo from './entities/UserInfo.js';
 
-const pluginUserInfo: Plugin = {
-  actions,
-  middlewares,
-};
+class PluginUserInfo extends Plugin {
+  public actions = actions;
 
-export default pluginUserInfo;
+  public middlewares = middlewares;
+
+  static getDatabaseEntities() {
+    return [UserInfo];
+  }
+}
+
+export default PluginUserInfo;

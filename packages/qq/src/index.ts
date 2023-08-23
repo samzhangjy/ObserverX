@@ -5,7 +5,7 @@ import ObserverX, {
   Platform,
   Plugin,
   Action,
-  MiddlewareClassType,
+  Middleware,
 } from '@observerx/core';
 import process from 'process';
 import chalk from 'chalk';
@@ -23,9 +23,9 @@ export interface ISendMessage {
 }
 
 export interface IPlatformQQConfig {
-  plugins?: Plugin[];
+  plugins?: (typeof Plugin)[];
   actions?: Action[];
-  middlewares?: MiddlewareClassType[];
+  middlewares?: (typeof Middleware)[];
 }
 
 class PlatformQQ implements Platform {
@@ -37,11 +37,11 @@ class PlatformQQ implements Platform {
 
   private readonly dataSource: DataSource;
 
-  private readonly plugins: Plugin[];
+  private readonly plugins: (typeof Plugin)[];
 
   private readonly actions: Action[];
 
-  private readonly middlewares: MiddlewareClassType[];
+  private readonly middlewares: (typeof Middleware)[];
 
   constructor(
     dataSource: DataSource,

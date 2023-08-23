@@ -1,6 +1,7 @@
-import 'dotenv/config';
+import 'dotenv/config'; // eslint-disable-line
 import { User, ActionBaseStatus, ActionParameters, Action, ActionBundle } from '@observerx/core';
 import type ObserverX from '@observerx/core';
+import UserInfo from '../entities/UserInfo.js';
 
 export interface UpdateUserInfoParameters extends ActionParameters {
   user_id: string;
@@ -9,33 +10,44 @@ export interface UpdateUserInfoParameters extends ActionParameters {
   hobbies?: string;
 }
 
-export async function updateUserInfo(userInfo: Partial<UpdateUserInfoParameters>, bot: ObserverX) {
+export async function updateUserInfo(
+  { user_id: userId, name, hobbies, personality }: Partial<UpdateUserInfoParameters>,
+  bot: ObserverX,
+) {
   try {
     const userRepository = bot.dataSource.getRepository(User);
-    let user = await userRepository.findOneBy({ id: userInfo.user_id });
+    const userInfoRepository = bot.dataSource.getRepository(UserInfo);
+    let user = await userRepository.findOneBy({ id: userId });
+    let userInfo = await userInfoRepository.findOneBy({ userId });
     if (!user) {
-      user = await userRepository.create(userInfo);
+      user = await userRepository.create({
+        id: userId,
+        name,
+      });
       if (user.id === process.env.ADMIN_ID) {
         user.isAdmin = true;
       }
       await userRepository.save(user);
+      if (userInfo) {
+        return ActionBaseStatus.SUCCESS;
+      }
+      userInfo = await userInfoRepository.create({
+        personality,
+        hobbies,
+      });
+      await userInfoRepository.save(userInfo);
       return ActionBaseStatus.SUCCESS;
     }
-    if (user.id === process.env.ADMIN_ID) {
-      user.isAdmin = true;
-    }
-    user.personality = userInfo.personality ?? user.personality;
-    user.hobbies = userInfo.hobbies ?? user.hobbies;
-    user.name = userInfo.name ?? user.name;
+    user.name = name || user.name;
     await userRepository.save(user);
-    // TODO: figure out why the below code won't work
-    // await userRepository.update(
-    //   { id: 1 },
-    //   // removes undefined values from `userInfo`
-    //   // from https://stackoverflow.com/questions/286141/remove-blank-attributes-from-an-object-in-javascript
-    //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    //   Object.fromEntries(Object.entries(userInfo).filter(([_, v]) => v !== undefined)),
-    // );
+    if (!userInfo) {
+      userInfo = await userInfoRepository.create({
+        userId,
+      });
+    }
+    userInfo.personality = personality || userInfo?.personality;
+    userInfo.hobbies = hobbies || userInfo?.hobbies;
+    await userInfoRepository.save(userInfo);
     return ActionBaseStatus.SUCCESS;
   } catch (e) {
     return e.toString();
@@ -49,9 +61,15 @@ export interface GetUserInfoParameters extends ActionParameters {
 export async function getUserInfo({ user_id: userId }: GetUserInfoParameters, bot: ObserverX) {
   try {
     const userRepository = bot.dataSource.getRepository(User);
-    return await userRepository.findOneBy({ id: userId });
+    const userInfoRepository = bot.dataSource.getRepository(UserInfo);
+    const user = await userRepository.findOneBy({ id: userId });
+    const userInfo = await userInfoRepository.findOneBy({ userId });
+    return {
+      ...(user ?? {}),
+      ...(userInfo ?? {}),
+    };
   } catch (e) {
-    return e.toString();
+    return { message: e.toString(), status: 'error' };
   }
 }
 

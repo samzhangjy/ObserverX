@@ -1,19 +1,24 @@
 /* eslint-disable no-underscore-dangle */
-import Middleware, { MiddlewareClassType } from './middleware.js';
+import Middleware from './middleware.js';
 
 class MiddlewareManager {
   private readonly _middlewares: Middleware[];
 
-  constructor(middlewares: MiddlewareClassType[] = []) {
+  constructor(middlewares: (typeof Middleware)[] = []) {
     this._middlewares = middlewares.map((Cur) => new Cur());
   }
 
-  public addMiddleware(ToAdd: MiddlewareClassType) {
-    this._middlewares.push(new ToAdd());
+  public async addMiddleware(ToAdd: typeof Middleware) {
+    const middleware = new ToAdd();
+    await middleware.initialize();
+    this._middlewares.push(middleware);
   }
 
-  public addMiddlewares(...toAdd: MiddlewareClassType[]) {
-    toAdd.forEach((middleware) => this.addMiddleware(middleware));
+  public async addMiddlewares(...toAdd: (typeof Middleware)[]) {
+    for (const middleware of toAdd) {
+      // eslint-disable-next-line no-await-in-loop
+      await this.addMiddleware(middleware);
+    }
   }
 
   public get middlewares(): Middleware[] {

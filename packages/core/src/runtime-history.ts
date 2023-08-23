@@ -1,6 +1,6 @@
 import { ChatCompletion, CreateChatCompletionRequestMessage } from 'openai/resources/chat';
-import Message from './entity/Message.js';
-import User from './entity/User';
+import Message from './entities/Message.js';
+import User from './entities/User';
 import FunctionCall = CreateChatCompletionRequestMessage.FunctionCall;
 
 class RuntimeHistory {

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { Controller, Get, Post } from '@observerx/server-util';
 import { type Request, type Response } from 'express';
 

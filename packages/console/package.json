@@ -11,6 +11,9 @@
     "build": "tsc",
     "lint": "eslint . --fix"
   },
+  "bin": {
+    "observerx-console": "./dist/cli.js"
+  },
   "devDependencies": {
     "@types/node": "^20.4.1",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
@@ -28,7 +31,10 @@
   "dependencies": {
     "@observerx/core": "workspace:*",
     "@observerx/database": "workspace:*",
+    "@observerx/plugin-default": "workspace:*",
+    "@observerx/plugin-user-info": "workspace:*",
     "chalk": "^5.3.0",
+    "commander": "^11.0.0",
     "dotenv": "^16.3.1",
     "typeorm": "^0.3.17"
   }

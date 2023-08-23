@@ -17,13 +17,15 @@ class PluginManager {
     this.actionManager = new ActionManager(plugins.flatMap((plugin) => plugin.actions));
   }
 
-  public addPlugin(plugin: Plugin) {
-    this._plugins.push(plugin);
-    this.middlewareManager.addMiddlewares(...plugin.middlewares);
-    this.actionManager.addActions(...plugin.actions);
+  public addPlugin(PluginToAdd: typeof Plugin) {
+    const pluginInstance = new PluginToAdd();
+    pluginInstance.initialize();
+    this._plugins.push(pluginInstance);
+    this.middlewareManager.addMiddlewares(...pluginInstance.middlewares);
+    this.actionManager.addActions(...pluginInstance.actions);
   }
 
-  public addPlugins(...plugins: Plugin[]) {
+  public addPlugins(...plugins: (typeof Plugin)[]) {
     plugins.forEach((plugin) => this.addPlugin(plugin));
   }
 

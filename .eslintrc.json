@@ -6,7 +6,8 @@
   "extends": [
     "airbnb-base",
     "airbnb-typescript/base",
-    "plugin:prettier/recommended"
+    "plugin:prettier/recommended",
+    "plugin:import/recommended"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -18,7 +19,9 @@
     ]
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "import",
+    "file-extension-in-import-ts"
   ],
   "rules": {
     "no-restricted-exports": [
@@ -28,9 +31,26 @@
     "no-restricted-syntax": "off",
     "class-methods-use-this": "off",
     "no-nested-ternary": "off",
-    "no-param-reassign": ["error", {
-      "props": false
-    }]
+    "no-param-reassign": [
+      "error",
+      {
+        "props": false
+      }
+    ],
+    "no-continue": "off",
+    "import/no-unresolved": "error",
+    "file-extension-in-import-ts/file-extension-in-import-ts": "error"
+  },
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts", ".tsx"]
+    },
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": "packages/*/tsconfig.json"
+      }
+    }
   },
   "root": true
 }

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { type Request, type Response } from 'express';
 import { Controller, Get } from '@observerx/server-util';
 import osu from 'node-os-utils';

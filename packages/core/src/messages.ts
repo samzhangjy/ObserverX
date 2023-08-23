@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import Message from './entity/Message.js';
+import Message from './entities/Message.js';
 
 async function getMessages(
   dataSource: DataSource,

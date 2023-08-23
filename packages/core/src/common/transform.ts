@@ -1,6 +1,6 @@
 import { CreateChatCompletionRequestMessage } from 'openai/resources/chat';
 import { DeepPartial } from 'typeorm';
-import Message from '../entity/Message.js';
+import Message from '../entities/Message.js';
 
 // eslint-disable-next-line import/prefer-default-export
 export function transformMessageToOpenAIFormat(

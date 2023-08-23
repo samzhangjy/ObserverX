@@ -1,12 +1,13 @@
+import 'dotenv/config'; // eslint-disable-line
+import * as fs from 'fs';
 import { DataSource } from 'typeorm';
 import { addEntities, getDataSource } from '@observerx/database';
 import ObserverX from '@observerx/core';
 import PlatformQQ from '@observerx/qq';
 import { Application } from '@observerx/server-util';
 import expressBasicAuth from 'express-basic-auth';
-import * as fs from 'fs';
-import pluginDefault from '@observerx/plugin-default';
-import pluginUserInfo from '@observerx/plugin-user-info';
+import PluginDefault from '@observerx/plugin-default';
+import PluginUserInfo from '@observerx/plugin-user-info';
 import platforms from './platforms.js';
 import controllers from './controllers/index.js';
 
@@ -16,13 +17,17 @@ class PanelServer {
   private readonly server: Application;
 
   constructor() {
-    addEntities(...ObserverX.getDatabaseEntities(), ...PlatformQQ.getDatabaseEntities());
+    addEntities(
+      ...ObserverX.getDatabaseEntities(),
+      ...PlatformQQ.getDatabaseEntities(),
+      ...PluginUserInfo.getDatabaseEntities(),
+    );
     this.dataSource = getDataSource();
     this.dataSource.initialize().then((dataSource) => {
       platforms.set(
         'qq',
         new PlatformQQ(dataSource, {
-          plugins: [pluginDefault, pluginUserInfo],
+          plugins: [PluginDefault, PluginUserInfo],
         }),
       );
       for (const platform of platforms) {
