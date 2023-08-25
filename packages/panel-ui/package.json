@@ -1,6 +1,6 @@
 {
   "name": "@observerx/panel-ui",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.5",
   "description": "ObserverX admin panel UI.",
   "sideEffects": false,
   "scripts": {
