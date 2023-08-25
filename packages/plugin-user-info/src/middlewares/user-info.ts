@@ -15,7 +15,7 @@ class UserInfoMiddleware extends Middleware {
 
   private isUpdatingUserInfo: boolean = false;
 
-  private readonly INFO_UPDATE_DELTA = 2;
+  private readonly INFO_UPDATE_DELTA = 8;
 
   private hasFinishedFunction: boolean = false;
 

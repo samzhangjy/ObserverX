@@ -108,7 +108,7 @@ export async function searchChatHistory(
 
   // TypeORM builtin support for COUNT(DISTINCT ...) is very buggy and includes duplicates,
   // so we have to use raw SQL here
-  // NOTE: try to workaround it by using QueryBuilder
+  // TODO: try to workaround it by using QueryBuilder
   const total = parseInt(
     (
       await repository.query(
@@ -120,7 +120,8 @@ export async function searchChatHistory(
 
   return {
     messages: messages.map((message) => instanceToPlain(message)),
-    total,
+    total_messages: total,
+    total_pages: Math.ceil(total / perPage),
     current_page: page,
   };
 }
@@ -139,8 +140,7 @@ export const searchChatHistoryAction = new Action(
     name: 'search_chat_history',
     description:
       'Searches chat history content with the user based on the keyword. At least one of the ' +
-      'parameters are required. You can always fetch for more pages if needed. Results are ordered ' +
-      'from the newest to the oldest.',
+      'parameters are required. You can always fetch for more pages if needed. Newest results come at the top.',
     parameters: {
       type: 'object',
       properties: {

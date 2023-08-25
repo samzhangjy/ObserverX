@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Code,
   Group,
@@ -8,13 +7,14 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import useStyles from './styles';
-import { IconBrandQq, IconServer } from '@tabler/icons-react';
+import { IconBrandQq, IconServer, IconUsers } from '@tabler/icons-react';
 import { Link, useLocation } from '@remix-run/react';
 import { useMediaQuery } from '@mantine/hooks';
 import { version } from '../../../package.json';
 
 const data = [
   { link: '/', label: '服务器', icon: IconServer },
+  { link: '/users', label: '用户', icon: IconUsers },
   { link: '/qq', label: 'QQ', icon: IconBrandQq },
 ];
 

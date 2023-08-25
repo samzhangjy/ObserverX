@@ -24,10 +24,15 @@ export function limitTokensFromMessages<T extends BaseMessage>(messages: T[], li
   const result = messages;
   const modifiedMessages = [];
 
+  // NOTE: protect the first 5 messages from being modified
+  const messagesByToken = [...messages.slice(0, messages.length - 5)].sort(
+    (a, b) => (b.tokens ?? 0) - (a.tokens ?? 0),
+  );
+
   while (getTokenCountFromMessages(result) >= limit) {
-    if (modifiedMessages.length >= messages.length) break;
-    const longestMessage = result.reduce((prev, curr) => (prev.tokens > curr.tokens ? prev : curr));
-    if (longestMessage.tokens <= 200) break;
+    if (modifiedMessages.length >= Math.max(messages.length - 5, 0)) break;
+    const longestMessage = messagesByToken.shift();
+    if (longestMessage.tokens <= 50) break;
     const longestMessageId = result.findIndex((message) => message.id === longestMessage.id);
     result[
       longestMessageId

@@ -30,8 +30,19 @@ class Action<T extends ActionInvoker = ActionInvoker, U extends string = string>
     private action: T,
   ) {}
 
-  public invoke(params: ActionParameters, bot: ObserverX): ReturnType<T> {
-    return this.action(params, bot);
+  public async invoke(
+    params: ActionParameters,
+    bot: ObserverX,
+  ): Promise<ReturnType<T> | { status: 'error'; error: string }> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/return-await
+      return await this.action(params, bot);
+    } catch (e) {
+      return {
+        status: 'error',
+        error: e.toString(),
+      };
+    }
   }
 }
 

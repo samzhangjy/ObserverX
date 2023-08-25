@@ -14,3 +14,5 @@ class PluginUserInfo extends Plugin {
 }
 
 export default PluginUserInfo;
+
+export { default as UserInfo } from './entities/UserInfo.js';

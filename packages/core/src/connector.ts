@@ -522,13 +522,22 @@ class ObserverX {
   > {
     let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk>;
     try {
-      stream = await this.openai.chat.completions.create({
-        model: modelMap[this.model].name,
-        messages,
-        functions:
-          this.pluginManager.actionDocs.length > 0 ? this.pluginManager.actionDocs : undefined,
-        stream: true,
-      });
+      stream = await new Promise<Stream<OpenAI.Chat.Completions.ChatCompletionChunk>>(
+        (resolve, reject) => {
+          this.openai.chat.completions
+            .create({
+              model: modelMap[this.model].name,
+              messages,
+              functions:
+                this.pluginManager.actionDocs.length > 0
+                  ? this.pluginManager.actionDocs
+                  : undefined,
+              stream: true,
+            })
+            .then((res) => resolve(res))
+            .catch((err) => reject(err));
+        },
+      );
     } catch (e) {
       yield {
         status: 'error',
