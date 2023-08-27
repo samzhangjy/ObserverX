@@ -14,6 +14,14 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             source ~/.bashrc
+            export PNPM_HOME="~/.local/share/pnpm"
+            case ":$PATH:" in
+            *":$PNPM_HOME:"*) ;;
+            *) export PATH="$PNPM_HOME:$PATH" ;;
+            esac
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            
             echo "[INFO] ObserverX server CI script running with PID $$"
   
             script_home=$(realpath ~/projects/observerx-panel/)
