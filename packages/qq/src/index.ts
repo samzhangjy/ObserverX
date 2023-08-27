@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import 'dotenv/config'; // eslint-disable-line
+import process from 'process';
 import ObserverX, {
   type BotModel,
   ChatResult,
@@ -6,13 +7,16 @@ import ObserverX, {
   Plugin,
   Action,
   Middleware,
+  getUser,
+  createUser,
+  updateUser,
 } from '@observerx/core';
-import process from 'process';
 import chalk from 'chalk';
 import { DataSource, Repository } from 'typeorm';
 import { Entity } from '@observerx/database';
 import { type IMessageHandler, startReverseServer, stopReverseServer } from './server.js';
 import Contact, { ContactType } from './entity/Contact.js';
+// eslint-disable-next-line import/no-cycle
 import { getContactInfoAction, refreshContactInfoAction } from './actions/contact-info.js';
 import { getGroupName, sendMessage } from './gocq.js';
 
@@ -127,6 +131,21 @@ class PlatformQQ implements Platform {
     }
 
     if (!currentContact.enabled) return;
+
+    let sender = await getUser(senderId);
+    if (!sender) {
+      sender = await createUser({
+        id: senderId,
+        name: senderNickname,
+      });
+    }
+
+    if (!sender.name) {
+      await updateUser({
+        id: senderId,
+        name: senderNickname,
+      });
+    }
 
     if (!this.botMap.has(parentId)) {
       this.botMap.set(

@@ -1,6 +1,6 @@
-import axios from 'axios';
 import process from 'process';
-import { ISendMessage } from './index';
+import axios from 'axios';
+import { type ISendMessage } from './index.js';
 
 const host = process.env.CQ_SERVER_HOST ?? '127.0.0.1';
 const port = parseInt(process.env.CQ_SERVER_PORT, 10) || 8080;
