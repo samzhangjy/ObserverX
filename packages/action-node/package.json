@@ -1,6 +1,6 @@
 {
   "name": "@observerx/action-node",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "description": "Node runner action for ObserverX.",
   "main": "dist/index.js",
   "type": "module",

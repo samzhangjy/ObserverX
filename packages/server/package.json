@@ -1,6 +1,6 @@
 {
   "name": "@observerx/server",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "description": "HTTP server for ObserverX core.",
   "main": "dist/index.js",
   "type": "module",
