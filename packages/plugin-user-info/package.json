@@ -1,6 +1,6 @@
 {
   "name": "@observerx/plugin-user-info",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0-alpha.7",
   "description": "User info plugin for ObserverX.",
   "main": "dist/index.js",
   "type": "module",
