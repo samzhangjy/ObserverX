@@ -42,6 +42,6 @@ jobs:
             
             echo "[INFO] Starting server..."
             cd ~/projects/observerx-panel
-            nohup bash -c "echo \"Starting with PID $$\"; until observerx-admin start; do echo \"Server crashed with exit code $?.  Respawning..\" >&2; sleep 10; done" &
+            nohup bash -c "echo \"Starting with PID $$\"; until observerx-admin start; do echo \"Server crashed with exit code $?.  Respawning..\" >&2; sleep 10; done" > "$script_home/observerx.log" 2>&1 &
             echo $! > "$script_home/nohup_pid.txt"
             echo "[INFO] Server Started."
