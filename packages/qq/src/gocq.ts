@@ -37,3 +37,8 @@ export async function getUserName(userId: string) {
   });
   return response.data?.data?.nickname;
 }
+
+export async function getBotId() {
+  const response = await axios.get(`${server}/get_login_info`);
+  return response.data?.data?.user_id.toString();
+}

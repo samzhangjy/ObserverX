@@ -18,7 +18,7 @@ import { type IMessageHandler, startReverseServer, stopReverseServer } from './s
 import Contact, { ContactType } from './entity/Contact.js';
 // eslint-disable-next-line import/no-cycle
 import { getContactInfoAction, refreshContactInfoAction } from './actions/contact-info.js';
-import { getGroupName, sendMessage } from './gocq.js';
+import { getBotId, getGroupName, sendMessage } from './gocq.js';
 
 export interface ISendMessage {
   isPrivate: boolean;
@@ -47,6 +47,8 @@ class PlatformQQ implements Platform {
 
   private readonly middlewares: (typeof Middleware)[];
 
+  private botId: string;
+
   constructor(
     dataSource: DataSource,
     { plugins = [], actions = [], middlewares = [] }: IPlatformQQConfig = {},
@@ -61,6 +63,8 @@ class PlatformQQ implements Platform {
     this.plugins = plugins;
     this.actions = actions;
     this.middlewares = middlewares;
+
+    getBotId().then((botId) => (this.botId = botId));
 
     this.initialize();
   }
@@ -173,8 +177,11 @@ class PlatformQQ implements Platform {
     }
     const bot = this.botMap.get(parentId);
 
+    // replace at-calls to the bot to minimize mis-understandings
+    const processedMessage = message.replace(`[CQ:at,qq=${this.botId}]`, '@ObserverX');
+
     await bot.addMessageToQueue({
-      message,
+      message: processedMessage,
       senderId,
     });
     console.log(`Added message to queue. Total tokens: ${chalk.blue(bot.totalTokens)}`);
