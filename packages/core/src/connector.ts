@@ -169,11 +169,12 @@ class ObserverX {
         order: { timestamp: 'DESC' },
       })
       .then((history) => {
-        limitTokensFromMessages(history.reverse(), modelMap[this.model].tokenLimit - 1000).forEach(
-          (message) => {
-            this.history.push(RuntimeHistory.fromMessage(message));
-          },
-        );
+        limitTokensFromMessages(
+          history.reverse(),
+          modelMap[this.model].tokenLimit - this.pluginManager.actionManager.tokens,
+        ).forEach((message) => {
+          this.history.push(RuntimeHistory.fromMessage(message));
+        });
       });
   }
 
@@ -229,7 +230,10 @@ class ObserverX {
     await this.messageRepository.save(messageRecord);
     this.history.push(RuntimeHistory.fromMessage(messageRecord));
 
-    this.history = limitTokensFromMessages(this.history, modelMap[this.model].tokenLimit - 1000);
+    this.history = limitTokensFromMessages(
+      this.history,
+      modelMap[this.model].tokenLimit - this.pluginManager.actionManager.tokens,
+    );
   }
 
   /**

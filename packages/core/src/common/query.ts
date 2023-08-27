@@ -40,3 +40,11 @@ export async function updateUser(partialUser: DeepPartial<User> & { id: string }
     ...partialUser,
   });
 }
+
+export async function createUser(partialUser: DeepPartial<User>): Promise<User> {
+  const dataSource = getDataSource();
+  const userRepository = dataSource.getRepository(User);
+  const user = userRepository.create(partialUser);
+  await userRepository.save(user);
+  return user;
+}

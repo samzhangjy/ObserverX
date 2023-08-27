@@ -30,4 +30,10 @@ export {
   getTokenCountFromMessages,
   getTokenCountFromMessage,
 } from './common/token-limiter.js';
-export { getUsers, type GetUsersParameters, getUser, updateUser } from './common/query.js';
+export {
+  getUsers,
+  type GetUsersParameters,
+  getUser,
+  updateUser,
+  createUser,
+} from './common/query.js';
