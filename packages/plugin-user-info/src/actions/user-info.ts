@@ -64,6 +64,7 @@ export async function getUserInfo({ user_id: userId }: GetUserInfoParameters, bo
     const userInfoRepository = bot.dataSource.getRepository(UserInfo);
     const user = await userRepository.findOneBy({ id: userId });
     const userInfo = await userInfoRepository.findOneBy({ userId });
+    if (userInfo.userId) delete userInfo.userId;
     return {
       ...(user ?? {}),
       ...(userInfo ?? {}),
