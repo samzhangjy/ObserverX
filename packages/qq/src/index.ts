@@ -64,7 +64,9 @@ class PlatformQQ implements Platform {
     this.actions = actions;
     this.middlewares = middlewares;
 
-    getBotId().then((botId) => (this.botId = botId));
+    getBotId().then((botId) => {
+      this.botId = botId;
+    });
 
     this.initialize();
   }
