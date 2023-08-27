@@ -15,43 +15,33 @@ jobs:
           script: |
             echo "[INFO] ObserverX server CI script running with PID $$"
   
-            last_ran_pid_path=~/projects/observerx-panel/last-pid.txt
+            script_home=$(realpath ~/projects/observerx-panel/)
+            export script_home
             
-            if [[ -f "$last_ran_pid_path"  ]]
-            then
-            last_ran_pid=$(cat $last_ran_pid_path)
+            kill -9 `cat "$script_home/nohup_pid.txt"`
+            rm "$script_home/nohup_pid.txt"
             
-            if [[ ! -z $last_ran_pid ]]
-            then
-            sudo kill -9 $last_ran_pid
-            fi
-            echo "[INFO] Killed existing CI process $last_ran_pid"
-            fi
+            echo "[INFO] Killed existing CI processes."
             
-            # empty file first
-            cat /dev/null > $last_ran_pid_path
-            echo "$$" >> $last_ran_pid_path
-            
-            node_pid=$(sudo lsof -i :443 | grep node | awk '{print $2}')
-            
-            if [ ! -z $node_pid ]
-            then
-            sudo kill -9 $node_pid
-            echo "[INFO] Killed existing node process $node_pid"
-            fi
+            echo ${{ secrets.PASSWORD }} | sudo -S lsof -i:443 | grep node | awk '{print $2}' | xargs kill -9
             
             old_version=$(pnpm list -g @observerx/panel-server | grep @observerx/panel-server | awk '{print $2}')
+            latest_version=$(npm view @observerx/panel-server version)
             
+            if [ $old_version == $latest_version ]
+            then
+            echo "[INFO] Package already at latest version ($latest_version), skipping update."
+            else
             echo "[INFO] Installing latest packages..."
             pnpm add -g @observerx/panel-server@latest
             
             new_version=$(pnpm list -g @observerx/panel-server | grep @observerx/panel-server | awk '{print $2}')
           
             echo "[INFO] Installed latest packages: $old_version -> $new_version"
+            fi
             
-            echo "[INFO] Server started."
+            echo "[INFO] Starting server..."
             cd ~/projects/observerx-panel
-            until observerx-admin start; do
-            echo "Server crashed with exit code $?.  Respawning.." >&2
-            sleep 10
-            done
+            nohup bash -c "echo \"Starting with PID $$\"; until observerx-admin start; do echo \"Server crashed with exit code $?.  Respawning..\" >&2; sleep 10; done" &
+            echo $! > "$script_home/nohup_pid.txt"
+            echo "[INFO] Server Started."
