@@ -64,7 +64,7 @@ export async function findUsers(filters: FindUsersParameters, bot: ObserverX) {
           const userInfo = await userInfoRepository.findOneBy({
             userId: user.id,
           });
-          if (userInfo.userId) delete userInfo.userId;
+          if (userInfo?.userId) delete userInfo.userId;
           return {
             ...user,
             ...userInfo,
@@ -84,10 +84,6 @@ export const findUsersAction = new Action(
     parameters: {
       type: 'object',
       properties: {
-        user_id: {
-          type: 'string',
-          description: 'The user ID to find.',
-        },
         name: {
           type: 'string',
           description: 'User name, e.g. "John".',
