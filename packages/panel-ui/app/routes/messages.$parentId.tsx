@@ -104,6 +104,10 @@ const useStyles = createStyles((theme) => ({
     fontSize: rem(14),
   },
 
+  itemActionCallFailed: {
+    fontSize: rem(14),
+  },
+
   unreadButton: {
     backgroundColor: theme.colorScheme === 'dark' ? theme.colors.gray[0] : theme.colors.dark[7],
     color: theme.colorScheme === 'dark' ? theme.colors.dark[7] : theme.colors.gray[0],
@@ -255,6 +259,39 @@ export default function MessagesDetail() {
     });
   }, [isFetchingMore]);
 
+  const ActionMessage = ({ message }: { message: Message }) => {
+    try {
+      const args: Record<string, any> = JSON.parse(message.action!.arguments);
+      return (
+        <Text className={classes.itemActionCall} color="dimmed">
+          {message.action!.name}(
+          {Object.entries(args).map(([key, value], index) => (
+            <>
+              <Text span className={classes.itemActionCall}>
+                {key}=
+              </Text>
+              <Text span italic className={classes.itemActionCall}>
+                {value}
+              </Text>
+              {index !== Object.keys(args).length - 1 && (
+                <Text span className={classes.itemActionCall}>
+                  ,{' '}
+                </Text>
+              )}
+            </>
+          ))}
+          )
+        </Text>
+      );
+    } catch (e) {
+      return (
+        <Text className={classes.itemActionCallFailed} color="red">
+          无法渲染此节点：{(e as any).toString()}
+        </Text>
+      );
+    }
+  };
+
   return (
     <Shell>
       <Container my={60}>
@@ -277,7 +314,9 @@ export default function MessagesDetail() {
             )}
             {!hasMore && (
               <Center my={10}>
-                <Text color="dimmed" size="sm">没有更多了</Text>
+                <Text color="dimmed" size="sm">
+                  没有更多了
+                </Text>
               </Center>
             )}
             {messages.map((message) => {
@@ -302,30 +341,7 @@ export default function MessagesDetail() {
                     >
                       {message.role}
                     </Badge>
-                    {message.action && (
-                      <Text className={classes.itemActionCall} color="dimmed">
-                        {message.action.name}(
-                        {Object.entries(
-                          JSON.parse(message.action.arguments) as Record<string, any>,
-                        ).map(([key, value], index) => (
-                          <>
-                            <Text span className={classes.itemActionCall}>
-                              {key}=
-                            </Text>
-                            <Text span italic className={classes.itemActionCall}>
-                              {value}
-                            </Text>
-                            {index !==
-                              Object.keys(JSON.parse(message.action!.arguments)).length - 1 && (
-                              <Text span className={classes.itemActionCall}>
-                                ,{' '}
-                              </Text>
-                            )}
-                          </>
-                        ))}
-                        )
-                      </Text>
-                    )}
+                    {message.action && <ActionMessage message={message} />}
                     {message.content && (
                       <Text className={classes.itemContent}>
                         {message.sender && (
