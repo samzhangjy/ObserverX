@@ -16,7 +16,7 @@ import {
   NumberInput,
   rem,
   Select,
-  Skeleton, Space,
+  Skeleton,
   Switch,
   Text,
   Textarea,
@@ -221,7 +221,7 @@ export default function Qq() {
 
   return (
     <Shell>
-      <Container>
+      <Container my={60}>
         <Group position="apart">
           <Title>QQ 平台</Title>
           <Button
@@ -236,7 +236,7 @@ export default function Qq() {
         </Group>
         <Divider mt={10} mb={30} />
         <Text mb={20}>共计 {contacts.length} 个联系配置。</Text>
-        <Skeleton visible={loading} height={200} radius="md">
+        <Skeleton visible={loading} height="100%" mih={400} radius="md">
           <Accordion classNames={classes} className={classes.root} variant="filled">
             {contacts.map((contact) => (
               <Accordion.Item value={contact.parentId} key={contact.parentId}>
@@ -264,7 +264,7 @@ export default function Qq() {
                   <Textarea
                     label="提示语"
                     placeholder="留空即为使用默认提示语"
-                    value={contactPrompt[contact.parentId]}
+                    value={contactPrompt[contact.parentId] ?? ''}
                     onChange={(e) => {
                       setContactPrompt({
                         ...contactPrompt,
@@ -310,7 +310,6 @@ export default function Qq() {
             ))}
           </Accordion>
         </Skeleton>
-        <Space h={600} w="100%" />
       </Container>
     </Shell>
   );

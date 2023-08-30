@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import {
   AppShell,
+  Box,
   Burger,
   Code,
   Footer,
   Group,
   Header,
   MediaQuery,
+  ScrollArea,
   Text,
   Title,
   useMantineTheme,
@@ -20,12 +22,18 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [opened, setOpened] = useState(false);
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const mainContentPadding = 16;
+
   return (
     <AppShell
       layout={isMobile ? 'default' : 'alt'}
       styles={{
         main: {
           background: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.colors.gray[0],
+          paddingTop: isMobile ? 'var(--mantine-header-height, 0px)' : '0px', // remove padding from mantine main component
+          paddingBottom: '0px',
+          paddingLeft: 'var(--mantine-navbar-width, 0px)',
+          paddingRight: 'var(--mantine-aside-width, 0px)',
         },
       }}
       navbarOffsetBreakpoint="sm"
@@ -61,9 +69,29 @@ export default function Shell({ children }: { children: ReactNode }) {
           </Header>
         </MediaQuery>
       }
-      pt={isMobile ? 20 : 0}
     >
-      {children}
+      <ScrollArea
+        sx={{
+          height: 'calc(100vh - var(--mantine-header-height, 0px))',
+          width: `calc(100vw - ${
+            2 * mainContentPadding
+          }px - var(--mantine-aside-width, 0px) - var(--mantine-navbar-width, 0px))`,
+        }}
+      >
+        <Box
+          p={mainContentPadding}
+          sx={{
+            minWidth: `calc(100vw - ${
+              2 * mainContentPadding
+            }px - var(--mantine-aside-width, 0px) - var(--mantine-navbar-width, 0px))`,
+            minHeight: `calc(100vh - ${
+              2 * mainContentPadding
+            }px - var(--mantine-header-height, 0px))`,
+          }}
+        >
+          {children}
+        </Box>
+      </ScrollArea>
     </AppShell>
   );
 }

@@ -27,7 +27,7 @@ import {
   Title,
   useMantineTheme,
 } from '@mantine/core';
-import { IconEdit } from '@tabler/icons-react';
+import { IconEdit, IconPlus } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 
 const useStyles = createStyles((theme) => ({
@@ -106,7 +106,7 @@ export default function Index() {
     });
     const vars = (await env.json()).env;
     setEnv(vars);
-    setModelsValues(vars);
+    setModalsValues(vars);
   };
 
   const getBilling = async () => {
@@ -160,8 +160,13 @@ export default function Index() {
   }, []);
 
   const { classes } = useStyles();
-  const [modelsOpened, setModelsOpened] = useState<Record<string, boolean>>({});
-  const [modelsValues, setModelsValues] = useState<Record<string, string>>({});
+  const [modalsOpened, setModalsOpened] = useState<Record<string, boolean>>({});
+  const [modalsValues, setModalsValues] = useState<Record<string, string>>({});
+  const [createEnvModalOpened, setCreateEnvModalOpened] = useState(false);
+  const [createEnvModalValue, setCreateEnvModalValue] = useState({
+    key: '',
+    value: '',
+  });
 
   const Stat = ({ title, progress, text }: { title: string; progress: number; text: string }) => (
     <Paper withBorder p="md" radius="md" key={title}>
@@ -188,7 +193,7 @@ export default function Index() {
 
   return (
     <Shell>
-      <Container>
+      <Container my={60}>
         <Group position="apart" mb={20}>
           <Title>服务器</Title>
           <Badge
@@ -231,13 +236,21 @@ export default function Index() {
             text={`已用 $${billing.usage.toFixed(2)}`}
           />
         </SimpleGrid>
-        <Title order={2} my={30}>
-          环境变量
-        </Title>
+        <Group position="apart" my={30}>
+          <Title order={2}>环境变量</Title>
+          <Button
+            size="sm"
+            variant="light"
+            leftIcon={<IconPlus size="1rem" />}
+            onClick={() => setCreateEnvModalOpened(true)}
+          >
+            创建变量
+          </Button>
+        </Group>
         <Table maw="100%">
           <thead>
             <tr>
-              <th>名称</th>
+              <th>键</th>
               <th>值</th>
               <th>操作</th>
             </tr>
@@ -254,29 +267,31 @@ export default function Index() {
                 <td>
                   <ActionIcon
                     variant="light"
-                    onClick={() => setModelsOpened({ ...modelsOpened, [key]: true })}
+                    onClick={() => setModalsOpened({ ...modalsOpened, [key]: true })}
                   >
                     <IconEdit size={16} />
                   </ActionIcon>
                 </td>
                 <Modal
-                  opened={modelsOpened[key]}
-                  onClose={() => setModelsOpened({ ...modelsOpened, [key]: false })}
+                  opened={modalsOpened[key]}
+                  onClose={() => setModalsOpened({ ...modalsOpened, [key]: false })}
                   title="修改变量"
                 >
                   <TextInput
                     label="值"
-                    value={modelsValues[key]}
+                    value={modalsValues[key]}
                     onChange={(e) =>
-                      setModelsValues({ ...modelsValues, [key]: e.currentTarget.value })
+                      setModalsValues({ ...modalsValues, [key]: e.currentTarget.value })
                     }
                   />
                   <Button
                     onClick={() => {
-                      setServerEnv(key, modelsValues[key]);
-                      setModelsOpened({ ...modelsOpened, [key]: false });
+                      setServerEnv(key, modalsValues[key]);
+                      setModalsOpened({ ...modalsOpened, [key]: false });
                     }}
                     mt={10}
+                    fullWidth
+                    variant="light"
                   >
                     修改
                   </Button>
@@ -285,6 +300,42 @@ export default function Index() {
             ))}
           </tbody>
         </Table>
+        <Modal
+          opened={createEnvModalOpened}
+          onClose={() => setCreateEnvModalOpened(false)}
+          title="创建变量"
+        >
+          <TextInput
+            label="键"
+            value={createEnvModalValue.key}
+            onChange={(e) =>
+              setCreateEnvModalValue({ ...createEnvModalValue, key: e.currentTarget.value })
+            }
+          />
+          <TextInput
+            label="值"
+            value={createEnvModalValue.value}
+            onChange={(e) =>
+              setCreateEnvModalValue({ ...createEnvModalValue, value: e.currentTarget.value })
+            }
+            mt={10}
+          />
+          <Button
+            onClick={() => {
+              setServerEnv(createEnvModalValue.key, createEnvModalValue.value);
+              setCreateEnvModalOpened(false);
+              setCreateEnvModalValue({
+                key: '',
+                value: '',
+              });
+            }}
+            mt={10}
+            fullWidth
+            variant="light"
+          >
+            创建变量
+          </Button>
+        </Modal>
       </Container>
     </Shell>
   );

@@ -9,18 +9,47 @@ class MessageController {
 
   private readonly PARENTS_PER_PAGE: number = parseInt(process.env.PARENTS_PER_PAGE ?? '16', 10);
 
-  @Get()
+  @Get('/parents')
+  public async getParents(req: Request, res: Response) {
+    try {
+      const page = parseInt((req.query.page as string) ?? '1', 10);
+      const messageRepository = getDataSource().getRepository(Message);
+      const { total, totalTokens }: { total: number; totalTokens: number } = await messageRepository
+        .createQueryBuilder()
+        .select('COUNT(DISTINCT("parentId"))', 'total')
+        .addSelect('CAST(SUM("tokens") as INTEGER)', 'totalTokens')
+        .getRawOne();
+      const parents = await messageRepository
+        .createQueryBuilder('message')
+        .select(
+          'message.parentId, CAST(COUNT(*) as INTEGER) as messages, CAST(SUM(message.tokens) as INTEGER) as tokens',
+        )
+        .groupBy('message.parentId')
+        .orderBy('messages', 'DESC')
+        .skip((page - 1) * this.PARENTS_PER_PAGE)
+        .take(this.PARENTS_PER_PAGE)
+        .getRawMany();
+      res.json({
+        parents,
+        totalTokens,
+        total,
+        totalPages: Math.ceil(total / this.PARENTS_PER_PAGE),
+        perPage: this.PARENTS_PER_PAGE,
+        status: 'success',
+      });
+    } catch (e) {
+      res.json({
+        status: 'error',
+        message: e.toString(),
+      });
+    }
+  }
+
+  @Get('/:parentId')
   public async getMessages(req: Request, res: Response) {
     try {
       const page = parseInt((req.query.page as string) ?? '1', 10);
-      const parentId = req.query.parentId as string;
-      if (!parentId) {
-        res.json({
-          status: 'error',
-          message: 'parentId is required.',
-        });
-        return;
-      }
+      const { parentId } = req.params;
       const [messages, total] = await getMessages({
         take: this.MESSAGES_PER_PAGE,
         skip: (page - 1) * this.MESSAGES_PER_PAGE,
@@ -30,6 +59,7 @@ class MessageController {
         where: {
           parentId,
         },
+        relations: ['sender'],
       });
       res.json({
         messages,
@@ -45,30 +75,36 @@ class MessageController {
     }
   }
 
-  @Get('/parents')
-  public async getParents(req: Request, res: Response) {
+  @Get('/:parentId/latest')
+  public async getLatestMessage(req: Request, res: Response) {
     try {
-      const page = parseInt((req.query.page as string) ?? '1', 10);
+      const { parentId } = req.params;
+      if (!req.query.lastMessageId) {
+        res.json({
+          status: 'error',
+          message: 'Missing lastMessageId',
+        });
+        return;
+      }
+      const lastMessageId = parseInt(req.query.lastMessageId as string, 10);
       const messageRepository = getDataSource().getRepository(Message);
-      const { total }: { total: number } = await messageRepository
-        .createQueryBuilder()
-        .select('COUNT(DISTINCT("parentId"))', 'total')
-        .getRawOne();
-      const parents = await messageRepository
+      const lastMessage = await messageRepository.findOneBy({ id: lastMessageId, parentId });
+      if (!lastMessage) {
+        res.json({
+          status: 'error',
+          message: 'Message not found',
+        });
+        return;
+      }
+      const messages = await messageRepository
         .createQueryBuilder('message')
-        .select(
-          'message.parentId, CAST(COUNT(*) as INTEGER) as count, SUM(message.tokens) as totalTokens',
-        )
-        .groupBy('message.parentId')
-        .orderBy('count', 'DESC')
-        .skip((page - 1) * this.PARENTS_PER_PAGE)
-        .take(this.PARENTS_PER_PAGE)
-        .getRawMany();
+        .where('message.timestamp > :timestamp', { timestamp: lastMessage.timestamp })
+        .andWhere({ parentId })
+        .leftJoinAndSelect('message.sender', 'sender')
+        .orderBy('message.timestamp', 'DESC')
+        .getMany();
       res.json({
-        parents,
-        total,
-        totalPages: Math.ceil(total / this.PARENTS_PER_PAGE),
-        perPage: this.PARENTS_PER_PAGE,
+        messages: messages.slice(0, messages.length - 1),
         status: 'success',
       });
     } catch (e) {

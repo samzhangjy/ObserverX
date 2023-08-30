@@ -13,17 +13,15 @@ import {
   Divider,
   Modal,
   Paper,
-  ScrollArea,
   Text,
   TextInput,
   Title,
-  useMantineTheme,
 } from '@mantine/core';
-import { useMediaQuery, useDebouncedValue, usePrevious } from '@mantine/hooks';
+import { useDebouncedValue, usePrevious } from '@mantine/hooks';
 import type { DataTableSortStatus } from 'mantine-datatable';
 import { DataTable } from 'mantine-datatable';
 import { useForm } from '@mantine/form';
-import { IconCheck, IconCross, IconSearch, IconX } from '@tabler/icons-react';
+import { IconCheck, IconSearch, IconX } from '@tabler/icons-react';
 
 export const meta: V2_MetaFunction = () => {
   return [
@@ -57,8 +55,6 @@ export default function Users() {
   const navigate = useNavigate();
   const { serverUrl } = useLoaderData<typeof loader>();
   const [users, setUsers] = useState<User[]>([]);
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const [currentlyEditing, setCurrentlyEditing] = useState<User>();
   const [totalUsers, setTotalUsers] = useState(0);
   const [usersPerPage, setUsersPerPage] = useState(0);
@@ -170,7 +166,7 @@ export default function Users() {
 
   return (
     <Shell>
-      <Container>
+      <Container my={60}>
         <Title order={1}>用户</Title>
         <Divider mt={10} mb={30} />
         <Text mb={20}>共计 {totalUsers} 个用户。</Text>
